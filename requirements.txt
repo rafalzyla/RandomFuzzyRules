@@ -1,0 +1,5 @@
+numba==0.61.2
+numpy==2.2.6
+pandas==2.2.3
+pyeda==0.29.0
+scikit_learn==1.5.2
