@@ -23,14 +23,9 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import HistGradientBoostingClassifier
 
-from aeon.visualisation import (
-    plot_critical_difference,
-    plot_boxplot,
-)
-import matplotlib.pyplot as plt
-
 from beam_fuzzy_rules_classifier import BeamFuzzyRulesClassifier
 from random_fuzzy_rules_classifier import RandomFuzzyRulesClassifier
+from gpr_algorithm import GPR
 
 UCI_DATASETS = {
     14: "Breast Cancer",
@@ -66,14 +61,11 @@ UCI_DATASETS = {
 RANDOM_STATE = 42
 N_SPLITS = 10
 
-USE_ESPRESSO = False
-
 BEAM_PARAMS = {
     "max_rules": 6,
     "max_rules_len": 6,
     "beam_width": 5,
     "threshold": 0.5,
-    "use_espresso": USE_ESPRESSO,
     "preprocessed": True,
     "verbose": 0,
     "max_literal_repetitions": 3
@@ -270,6 +262,7 @@ def get_transformed_feature_metadata(
     fitted_preprocessor,
     numerical_columns,
     categorical_columns,
+    n_transformed_features
 ):
     """Return metadata required by BeamFuzzyRulesClassifier.
 
@@ -282,16 +275,7 @@ def get_transformed_feature_metadata(
     categorical_feature_groups : list of tuple of int
         Each tuple contains transformed-column indices belonging
         to one original categorical variable.
-
-    feature_names : list of str
-        Names of all transformed columns.
     """
-    feature_names = list(
-        fitted_preprocessor.get_feature_names_out()
-    )
-
-    n_transformed_features = len(feature_names)
-
     # ColumnTransformer emits transformers in their declared order.
     # In make_preprocessor, numeric columns are added first.
     n_numerical = len(numerical_columns)
@@ -353,15 +337,11 @@ def get_transformed_feature_metadata(
             "Inconsistent transformed-feature metadata. "
             f"Missing indices: {missing}; "
             f"unexpected indices: {unexpected}; "
-            f"output feature names: {feature_names}"
         )
 
     return {
         "continuous_features": continuous_features,
-        "categorical_feature_groups": (
-            categorical_groups
-        ),
-        "feature_names": feature_names,
+        "categorical_feature_groups": categorical_groups
     }
 
 
@@ -372,7 +352,7 @@ def make_preprocessor(numerical_columns, categorical_columns):
         numerical_pipeline = Pipeline([
             (
                 "imputer",
-                SimpleImputer(strategy="median", keep_empty_features=True),
+                SimpleImputer(strategy="median"),
             ),
             (
                 "scaler",
@@ -388,13 +368,13 @@ def make_preprocessor(numerical_columns, categorical_columns):
         categorical_pipeline = Pipeline([
             (
                 "imputer",
-                SimpleImputer(strategy="most_frequent", keep_empty_features=True),
+                SimpleImputer(strategy="most_frequent"),
             ),
             (
                 "onehot",
                 OneHotEncoder(
                     handle_unknown="ignore",
-                    sparse_output=False,
+                    sparse=False,
                     dtype=np.float64,
                 ),
             ),
@@ -424,44 +404,37 @@ def make_estimators(
             RandomFuzzyRulesClassifier(
                 **RANDOM_PARAMS,
                 continuous_features=continuous_features,
-                categorical_feature_groups=(
-                    categorical_feature_groups
-                ),
-                feature_names=(
-                    transformed_feature_names
-                ),
+                categorical_feature_groups=categorical_feature_groups,
+                feature_names=transformed_feature_names,
             )
         ),        
         "BeamFuzzyRules": (
             BeamFuzzyRulesClassifier(
                 **BEAM_PARAMS,
                 continuous_features=continuous_features,
-                categorical_feature_groups=(
-                    categorical_feature_groups
-                ),
-                feature_names=(
-                    transformed_feature_names
-                ),
+                categorical_feature_groups=categorical_feature_groups,
+                feature_names=transformed_feature_names,
             )
         ),
 
-        "DecisionTree": (
-            DecisionTreeClassifier(
-                random_state=RANDOM_STATE,
+        "GPR": (
+            GPR(
+                feature_names=transformed_feature_names,
+                n_populations=100,
+                n_generations=100,
+                threshold=0.5,
+                verbose=False,
+                max_n_of_rules=6,
+                max_n_of_ands=6,
+                base_pb=0.1
             )
         ),
 
-        "LogisticRegression": (
-            LogisticRegression(
-                random_state=RANDOM_STATE,
-            )
-        ),
+        "DecisionTree": DecisionTreeClassifier(random_state=RANDOM_STATE),
 
-        "HistGradientBoosting": (
-            HistGradientBoostingClassifier(
-                random_state=RANDOM_STATE,
-            )
-        ),
+        "LogisticRegression": LogisticRegression(random_state=RANDOM_STATE),
+
+        "HistGradientBoosting": HistGradientBoostingClassifier(random_state=RANDOM_STATE)
     }
 
 
@@ -485,11 +458,21 @@ def warm_up_numba():
         threshold=0.5,
         preprocessed=True,
         continuous_features="all",
-        use_espresso=False,
         verbose=0,
     )
 
-    warm_model2 = RandomFuzzyRulesClassifier()
+    warm_model2 = RandomFuzzyRulesClassifier(
+        max_rules=2,
+        max_rules_len=2,
+        max_literal_repetitions=2,
+        threshold=0.5,
+        n_candidates=50,
+        max_sampling_attempts=500,
+        sampling_chunk_size=100,
+        preprocessed=True,
+        continuous_features="all",
+        random_state=RANDOM_STATE,
+    )
 
     warm_model.fit(X_warm, y_warm)
     warm_model2.fit(X_warm, y_warm)
@@ -500,8 +483,6 @@ def warm_up_numba():
 
     print("Numba warm-up completed.")
 
-warm_up_numba()
-
 
 def get_positive_scores(estimator, X_test):
     if hasattr(estimator, "predict_proba"):
@@ -510,8 +491,11 @@ def get_positive_scores(estimator, X_test):
     if hasattr(estimator, "decision_function"):
         return estimator.decision_function(X_test)
 
+    if hasattr(estimator, "predict"):
+        return estimator.predict(X_test)
+
     raise AttributeError(
-        "Estimator has neither predict_proba nor decision_function."
+        "Estimator has neither predict_proba, decision_function, nor predict."
     )
 
 RESULT_COLUMNS = [
@@ -640,6 +624,8 @@ def run_benchmark(dataset_dictionary):
                     X_test,
                     dtype=np.float64,
                 )
+
+                feature_names = [f"x{i+1}" for i in range(X_train.shape[1])]
                 
                 # Ensure that preprocessing produced valid membership values.
                 if not np.isfinite(X_train).all():
@@ -667,27 +653,16 @@ def run_benchmark(dataset_dictionary):
                 feature_metadata = (
                     get_transformed_feature_metadata(
                         fitted_preprocessor=fold_preprocessor,
-                        numerical_columns=data[
-                            "numerical_columns"
-                        ],
-                        categorical_columns=data[
-                            "categorical_columns"
-                        ],
+                        numerical_columns=data["numerical_columns"],
+                        categorical_columns=data["categorical_columns"],
+                        n_transformed_features=len(feature_names)
                     )
                 )
                 
                 estimators = make_estimators(
-                    continuous_features=feature_metadata[
-                        "continuous_features"
-                    ],
-                    categorical_feature_groups=(
-                        feature_metadata[
-                            "categorical_feature_groups"
-                        ]
-                    ),
-                    transformed_feature_names=(
-                        feature_metadata["feature_names"]
-                    ),
+                    continuous_features=feature_metadata["continuous_features"],
+                    categorical_feature_groups=feature_metadata["categorical_feature_groups"],
+                    transformed_feature_names=feature_names,
                 )
 
                 for estimator_name, estimator in estimators.items():
@@ -796,159 +771,6 @@ def run_benchmark(dataset_dictionary):
     return results
 
 
-def metric_matrix(dataset_results, metric):
-    matrix = dataset_results.pivot(
-        index="dataset_name",
-        columns="estimator",
-        values=metric,
-    )
-
-    available_columns = [
-        estimator
-        for estimator in ESTIMATOR_ORDER
-        if estimator in matrix.columns
-    ]
-
-    matrix = matrix[available_columns]
-
-    # Use only datasets completed by every classifier.
-    matrix = matrix.dropna(axis=0, how="any")
-
-    return matrix
-
-
-def draw_critical_difference(
-    dataset_results,
-    metric,
-    title,
-    lower_better=False,
-):
-    matrix = metric_matrix(dataset_results, metric)
-
-    fig, ax = plot_critical_difference(
-        scores=matrix.to_numpy(),
-        labels=list(matrix.columns),
-        lower_better=lower_better,
-        test="wilcoxon",
-        correction="holm",
-        alpha=0.05,
-        width=8,
-        textspace=2.0,
-    )
-
-    ax.set_title(title)
-
-    output_file = OUTPUT_DIR / f"critical_difference_{metric}.png"
-    fig.savefig(output_file, dpi=300, bbox_inches="tight")
-
-    return matrix
-
-def draw_boxplot(
-    dataset_results,
-    metric,
-    title,
-    relative=False,
-    log10=False,
-):
-    matrix = metric_matrix(dataset_results, metric)
-    values = matrix.to_numpy()
-
-    if log10:
-        values = np.log10(
-            np.maximum(values, np.finfo(float).tiny)
-        )
-
-    fig, ax = plot_boxplot(
-        results=values,
-        labels=list(matrix.columns),
-        relative=relative,
-        plot_type="boxplot",
-        outliers=True,
-        title=title,
-    )
-
-    output_file = OUTPUT_DIR / f"boxplot_{metric}.png"
-    fig.savefig(output_file, dpi=300, bbox_inches="tight")
-
 if __name__ == "__main__":
+    warm_up_numba()
     results = run_benchmark(UCI_DATASETS)
-    
-    results = pd.read_csv(RESULTS_FILE)
-    
-    dataset_results = (
-        results
-        .groupby(
-            ["dataset_id", "dataset_name", "estimator"],
-            as_index=False,
-        )
-        .agg(
-            accuracy=("accuracy", "mean"),
-            f1=("f1", "mean"),
-            auroc=("auroc", "mean"),
-            fit_time=("fit_time", "mean"),
-            predict_time=("predict_time", "mean"),
-        )
-    )
-    
-    
-    ESTIMATOR_ORDER = [
-        "RandomFuzzyRules",
-        "BeamFuzzyRules",
-        "DecisionTree",
-        "LogisticRegression",
-        "HistGradientBoosting"
-    ]
-    
-    
-    accuracy_matrix = draw_critical_difference(
-        dataset_results,
-        metric="accuracy",
-        title="Accuracy — critical difference diagram",
-        lower_better=False,
-    )
-    
-    f1_matrix = draw_critical_difference(
-        dataset_results,
-        metric="f1",
-        title="F1 — critical difference diagram",
-        lower_better=False,
-    )
-    
-    auroc_matrix = draw_critical_difference(
-        dataset_results,
-        metric="auroc",
-        title="AUROC — critical difference diagram",
-        lower_better=False,
-    )
-    
-    draw_boxplot(
-        dataset_results,
-        metric="accuracy",
-        title="Rozkład średniej Accuracy między zbiorami",
-    )
-    
-    draw_boxplot(
-        dataset_results,
-        metric="f1",
-        title="Rozkład średniej F1 między zbiorami",
-    )
-    
-    draw_boxplot(
-        dataset_results,
-        metric="auroc",
-        title="Rozkład średniej AUROC między zbiorami",
-    )
-    
-    draw_boxplot(
-        dataset_results,
-        metric="fit_time",
-        title="Średni czas uczenia",
-        log10=False,
-    )
-    
-    draw_boxplot(
-        dataset_results,
-        metric="predict_time",
-        title="Średni czas predykcji",
-        log10=False,
-    )

@@ -19,9 +19,6 @@ The classifier returns a fuzzy score
 and a probability-like score
 
     p(class=positive | x) = 1 - exp(2 * ln(0.5) * S(x)).
-
-Optionally, PyEDA/Espresso is used to minimize the Boolean DNF representation
-of the rule set before every candidate evaluation.
 """
 
 from __future__ import annotations
@@ -270,10 +267,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         classifier inside an external sklearn Pipeline containing
         a ColumnTransformer.
 
-    use_espresso : bool, default=True
-        Whether to minimize every candidate rule set with PyEDA/Espresso before
-        scoring. Requires ``pyeda`` to be installed.
-
     max_steps : int or None, default=None
         Maximum number of beam-expansion steps. If None, uses
         ``max_rules * max_rules_len``.
@@ -304,7 +297,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         ] = None,
         categorical_feature_groups: Optional[Sequence[Sequence[int]]] = None,
         preprocessed: bool = False,
-        use_espresso: bool = False,
         max_steps: Optional[int] = None,
         random_state: Optional[int] = None,
         verbose: int = 0,
@@ -321,7 +313,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         self.continuous_features = continuous_features
         self.categorical_feature_groups = categorical_feature_groups
         self.preprocessed = preprocessed
-        self.use_espresso = use_espresso
         self.max_steps = max_steps
         self.random_state = random_state
         self.verbose = verbose
@@ -389,13 +380,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             self.n_transformed_features_ = Xt.shape[1]
             self._build_transformed_feature_metadata_and_groups()
 
-        if self.use_espresso and self.max_literal_repetitions > 1:
-            warnings.warn(
-                "Espresso does not preserve Very/Extremely/Medium fuzzy semantics. "
-                "Advanced candidates are therefore left unchanged by Espresso.",
-                UserWarning,
-            )
-
         best_rules, best_acc = self._beam_search(Xt, y_bin)
         self.rules_struct_ = best_rules
         self.train_acc_ = best_acc
@@ -440,7 +424,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             * self.max_literal_repetitions
         )
         eval_cache: Dict[RuleSet, float] = {empty: empty_acc}
-        espresso_cache: Dict[RuleSet, RuleSet] = {}
 
         for step in range(max_steps):
             raw_unique = set()
@@ -461,45 +444,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
                 if base not in queued:
                     queued.add(base)
                     candidates_to_evaluate.append(base)
-
-                if self.use_espresso:
-                    minimized = espresso_cache.get(base)
-                    if minimized is None:
-                        minimized = self._canonicalize_rules(
-                            self._espresso_simplify(base)
-                        )
-                        espresso_cache[base] = minimized
-
-                        # Kept intentionally for expensive, explicit debugging.
-                        if self.verbose >= 3:
-                            acc_base, acc_minimized = self._evaluate_rules_batch(
-                                Xt, y_bin, [base, minimized]
-                            )
-                            rules_base = self._format_rules(
-                                base, self._compute_rule_stats(Xt, y_bin, base)
-                            )
-                            rules_minimized = self._format_rules(
-                                minimized,
-                                self._compute_rule_stats(Xt, y_bin, minimized),
-                            )
-                            print(
-                                f'Przed Espresso: {" OR ".join(map(lambda x: x.split(" | ")[0], rules_base[:-1]))}, '
-                                f"acc: {acc_base:.3f}"
-                            )
-                            print(
-                                f'Po Espresso: {" OR ".join(map(lambda x: x.split(" | ")[0], rules_minimized[:-1]))}, '
-                                f"acc: {acc_minimized:.3f}"
-                            )
-                            print(140 * "-")
-
-                    if (
-                        minimized != base
-                        and self._is_valid_ruleset(minimized)
-                        and minimized not in eval_cache
-                        and minimized not in queued
-                    ):
-                        queued.add(minimized)
-                        candidates_to_evaluate.append(minimized)
 
             if not candidates_to_evaluate:
                 break
@@ -700,62 +644,6 @@ class BeamFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             modifiers,
             lengths,
         )
-
-    def _espresso_simplify(self, rules):
-        # Espresso cannot preserve powers or Medium. Return such models unchanged.
-        if any(
-            condition.state == "medium" or condition.modifier != 1
-            for rule in rules
-            for condition in rule
-        ):
-            return rules
-        if not rules or len(rules) == 1:
-            return rules
-
-        try:
-            from pyeda.inter import exprvars, And, Or, espresso_exprs
-        except Exception as exc:
-            raise ImportError("use_espresso=True requires pyeda.") from exc
-
-        xs = exprvars("x", self.n_transformed_features_)
-        terms = []
-        for rule in rules:
-            literals = []
-            for condition in rule:
-                positive = condition.state in {"high", "present"}
-                literals.append(xs[condition.feature] if positive else ~xs[condition.feature])
-            terms.append(literals[0] if len(literals) == 1 else And(*literals))
-
-        expr = Or(*terms).to_dnf()
-        try:
-            simplified, = espresso_exprs(expr)
-        except ValueError:
-            return rules
-        if simplified.is_one() or simplified.is_zero():
-            return rules
-        return self._expr_to_rules(simplified)
-
-    def _expr_to_rules(self, expr):
-        result = []
-        categorical_set = set().union(*self.categorical_feature_groups_) if self.categorical_feature_groups_ else set()
-        for cube in expr.to_dnf().cover:
-            rule = []
-            for lit in cube:
-                text = str(lit)
-                negative = text.startswith("~")
-                if negative:
-                    text = text[1:]
-                if not (text.startswith("x[") and text.endswith("]")):
-                    continue
-                j = int(text[2:-1])
-                if j in categorical_set:
-                    state = "absent" if negative else "present"
-                else:
-                    state = "low" if negative else "high"
-                rule.append(Condition(j, state, 1))
-            if rule:
-                result.append(tuple(rule))
-        return self._canonicalize_rules(tuple(result))
 
     def _compute_rule_stats(self, Xt, y_bin, rules):
         stats = []
