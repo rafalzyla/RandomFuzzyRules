@@ -406,6 +406,7 @@ def make_estimators(
                 continuous_features=continuous_features,
                 categorical_feature_groups=categorical_feature_groups,
                 feature_names=transformed_feature_names,
+                random_state=RANDOM_STATE
             )
         ),        
         "BeamFuzzyRules": (
