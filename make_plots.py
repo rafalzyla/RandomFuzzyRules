@@ -111,10 +111,11 @@ if __name__ == "__main__":
     ESTIMATOR_ORDER = [
         "RandomFuzzyRules",
         "BeamFuzzyRules",
-        "GPR",
-        "DecisionTree",
-        "LogisticRegression",
-        "HistGradientBoosting"
+        #"GPR",
+        "GPR_FAST",
+        #"DecisionTree",
+        #"LogisticRegression",
+        #"HistGradientBoosting"
     ]
     
     

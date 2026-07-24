@@ -26,6 +26,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from beam_fuzzy_rules_classifier import BeamFuzzyRulesClassifier
 from random_fuzzy_rules_classifier import RandomFuzzyRulesClassifier
 from gpr_algorithm import GPR
+from gpr_fast import GPR_FAST
 
 UCI_DATASETS = {
     14: "Breast Cancer",
@@ -431,6 +432,20 @@ def make_estimators(
             )
         ),
 
+        "GPR_FAST": (
+            GPR_FAST(
+                feature_names=transformed_feature_names,
+                n_populations=100,
+                n_generations=100,
+                threshold=0.5,
+                verbose=False,
+                max_n_of_rules=6,
+                max_n_of_ands=6,
+                base_pb=0.1,
+                random_state=RANDOM_STATE
+            )
+        ),
+
         "DecisionTree": DecisionTreeClassifier(random_state=RANDOM_STATE),
 
         "LogisticRegression": LogisticRegression(random_state=RANDOM_STATE),
@@ -475,13 +490,27 @@ def warm_up_numba():
         random_state=RANDOM_STATE,
     )
 
+    warm_model3 = GPR_FAST(
+        feature_names=[f"x{i}" for i in range(X_warm.shape[1])],
+        n_populations=2,
+        n_generations=2,
+        threshold=0.5,
+        verbose=False,
+        max_n_of_rules=2,
+        max_n_of_ands=2,
+        base_pb=0.1,
+        random_state=RANDOM_STATE
+    )
+
     warm_model.fit(X_warm, y_warm)
     warm_model2.fit(X_warm, y_warm)
+    warm_model3.fit(X_warm, y_warm)
 
     # Compile the prediction scoring function as well.
     warm_model.predict(X_warm[:10])
     warm_model2.predict(X_warm[:10])
-
+    warm_model3.predict(X_warm[:10])
+    
     print("Numba warm-up completed.")
 
 
