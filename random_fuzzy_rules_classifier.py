@@ -79,7 +79,7 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
 
 
 @njit(cache=True, fastmath=False, parallel=True)
-def _batch_accuracy_fast(X, y, features, states, modifiers, lengths, n_rules, threshold):
+def _batch_accuracy(X, y, features, states, modifiers, lengths, n_rules, threshold):
     accuracies = np.empty(features.shape[0], dtype=np.float64)
     log_quarter = 2.0 * np.log(0.5)
     for c in prange(features.shape[0]):
@@ -108,6 +108,40 @@ def _batch_accuracy_fast(X, y, features, states, modifiers, lengths, n_rules, th
                 score += activation
             p = 1.0 - np.exp(log_quarter * score)
             correct += int((p >= threshold) == y[i])
+        accuracies[c] = correct / X.shape[0]
+    return accuracies
+
+
+@njit(cache=True, fastmath=False, parallel=True)
+def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n_rules):
+    accuracies = np.empty(features.shape[0], dtype=np.float64)
+    for c in prange(features.shape[0]):
+        correct = 0
+        for i in range(X.shape[0]):
+            score = 0.0
+            for r in range(n_rules[c]):
+                activation = 1.0
+                for k in range(lengths[c, r]):
+                    j = features[c, r, k]
+                    state = states[c, r, k]
+                    modifier = modifiers[c, r, k]
+                    x = X[i, j]
+                    if state == 0:
+                        value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
+                    elif state == 1:
+                        low = 1.0 - x
+                        value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
+                    elif state == 2:
+                        value = x * (1.0 - x)
+                    elif state == 3:
+                        value = x
+                    else:
+                        value = 1.0 - x
+                    activation *= value
+                score += activation
+                if score >= 0.5:
+                    break
+            correct += int((score >= 0.5) == y[i])
         accuracies[c] = correct / X.shape[0]
     return accuracies
 
@@ -347,10 +381,10 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             raise RuntimeError("Random search generated no valid candidates.")
 
         start = time.perf_counter()
-        accuracies = _batch_accuracy_fast(
-            Xt, y_binary, features, states, modifiers, lengths, n_rules,
-            self.threshold,
-        )
+        if self.threshold == 0.5:
+            accuracies = _batch_accuracy_threshold_half(Xt, y_binary, features, states, modifiers, lengths, n_rules)
+        else:
+            accuracies = _batch_accuracy(Xt, y_binary, features, states, modifiers, lengths, n_rules, self.threshold)
         self.evaluation_time_ = time.perf_counter() - start
         best_index = self._select_best_encoded(
             accuracies, modifiers, lengths, n_rules

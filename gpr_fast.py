@@ -267,7 +267,7 @@ class GPR_FAST:
 
     def _chromosome_to_rule_columns(self, chromosome):
         encoded_rules = []
-        for gene in chromosome:
+        for gene_index, gene in enumerate(chromosome):
             column_indices = []
             for symbol in gene.kexpression:
                 if symbol.arity == 0:
