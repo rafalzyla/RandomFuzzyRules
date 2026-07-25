@@ -79,7 +79,8 @@ RANDOM_PARAMS = {
     "threshold": 0.5,
     "n_candidates": 50_000,
     "max_sampling_attempts": 1_000_000,
-    "sampling_chunk_size": 20_000,
+    "sampling_type_number": 2,
+    "sampling_type_length": 2,
     "preprocessed": True,
 }
 
@@ -409,7 +410,7 @@ def make_estimators(
                 feature_names=transformed_feature_names,
                 random_state=RANDOM_STATE
             )
-        ),        
+        ),      
         "BeamFuzzyRules": (
             BeamFuzzyRulesClassifier(
                 **BEAM_PARAMS,
@@ -505,12 +506,11 @@ def warm_up_numba():
     warm_model.fit(X_warm, y_warm)
     warm_model2.fit(X_warm, y_warm)
     warm_model3.fit(X_warm, y_warm)
-
+    
     # Compile the prediction scoring function as well.
     warm_model.predict(X_warm[:10])
     warm_model2.predict(X_warm[:10])
     warm_model3.predict(X_warm[:10])
-    
     print("Numba warm-up completed.")
 
 

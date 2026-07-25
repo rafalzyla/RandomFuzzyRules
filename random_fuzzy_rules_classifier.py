@@ -145,152 +145,501 @@ def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n
         accuracies[c] = correct / X.shape[0]
     return accuracies
 
+@njit(cache=True, fastmath=False, inline="always", forceinline=True)
+def _sample_structure_size(max_value, sampling_type):
+    """Sample a rule count or rule length.
 
-@njit(cache=True, fastmath=False, parallel=False)
-def _generate_raw_candidates_fast(
-    seed, n_raw, n_rules, max_rule_len, max_modifier, continuous_mask
-):
-    """Generate fixed-shape raw candidates in Numba; Python canonicalizes them."""
-    np.random.seed(seed)
-    n_features = continuous_mask.shape[0]
-    features = np.full((n_raw, n_rules, max_rule_len), -1, dtype=np.int64)
-    states = np.zeros((n_raw, n_rules, max_rule_len), dtype=np.uint8)
-    modifiers = np.ones((n_raw, n_rules, max_rule_len), dtype=np.uint8)
-    lengths = np.empty((n_raw, n_rules), dtype=np.int64)
+    Parameters
+    ----------
+    max_value : int
+        Maximum allowed value. The returned value belongs to
+        {1, ..., max_value}.
 
-    for c in range(n_raw):
-        for r in range(n_rules):
-            length = np.random.randint(1, max_rule_len + 1)
-            lengths[c, r] = length
-            for k in range(length):
-                j = np.random.randint(0, n_features)
-                features[c, r, k] = j
-                if continuous_mask[j]:
-                    state = np.random.randint(0, 3)  # high, low, medium
-                    states[c, r, k] = state
-                    if state < 2:
-                        modifiers[c, r, k] = np.random.randint(1, max_modifier + 1)
-                else:
-                    states[c, r, k] = np.random.randint(3, 5)  # present, absent
-    return features, states, modifiers, lengths
+    sampling_type : int
+        Sampling strategy:
 
+        1 : discrete uniform
+            Uniformly sample from {1, ..., max_value}.
 
-@njit(cache=True, fastmath=False, parallel=False)
-def _canonicalize_raw_candidates_fast(features, states, modifiers, lengths, n_rules, group_ids):
-    """Canonicalize raw candidates in-place and mark structurally valid rows.
+        2 : exponential/log-uniform scale
+            floor(2 ** U(0, log2(max_value + 1))).
 
-    To preserve the sampled rule length exactly, candidates requiring duplicate
-    removal or categorical redundancy removal are rejected rather than shortened.
+    Returns
+    -------
+    value : int
+        Sampled integer in {1, ..., max_value}.
     """
-    n_candidates, max_rules, max_len = features.shape
-    valid = np.ones(n_candidates, dtype=np.bool_)
+    if max_value <= 1:
+        return 1
 
-    for c in range(n_candidates):
-        # Validate and sort conditions within each rule.
-        for r in range(n_rules):
-            length = lengths[c, r]
-            for a in range(length):
-                fa = features[c, r, a]
-                sa = states[c, r, a]
-                ga = group_ids[fa]
-                for b in range(a):
-                    fb = features[c, r, b]
-                    sb = states[c, r, b]
-                    # One semantic condition per transformed feature.
-                    if fa == fb:
-                        valid[c] = False
-                    # Within one-hot groups, at most one present condition is
-                    # possible; present plus any other condition is redundant or
-                    # contradictory and is rejected to preserve sampled length.
-                    gb = group_ids[fb]
-                    if ga >= 0 and ga == gb and (sa == 3 or sb == 3):
-                        valid[c] = False
+    if sampling_type == 1:
+        return np.random.randint(1, max_value + 1)
 
-            if not valid[c]:
-                break
+    # sampling_type == 2
+    value = int(2.0 ** np.random.uniform(0.0, np.log2(max_value + 1.0)))
 
-            # Insertion sort conditions by feature, state, modifier.
-            for a in range(1, length):
-                f0 = features[c, r, a]
-                s0 = states[c, r, a]
-                m0 = modifiers[c, r, a]
-                b = a - 1
-                while b >= 0:
-                    fb = features[c, r, b]
-                    sb = states[c, r, b]
-                    mb = modifiers[c, r, b]
-                    greater = fb > f0 or (fb == f0 and (sb > s0 or (sb == s0 and mb > m0)))
-                    if not greater:
-                        break
-                    features[c, r, b + 1] = fb
-                    states[c, r, b + 1] = sb
-                    modifiers[c, r, b + 1] = mb
-                    b -= 1
-                features[c, r, b + 1] = f0
-                states[c, r, b + 1] = s0
-                modifiers[c, r, b + 1] = m0
+    # Defensive protection against floating-point rounding.
+    if value > max_value:
+        value = max_value
 
-        if not valid[c]:
-            continue
+    return value
 
-        # Sort rules by length, then lexicographically by conditions.
-        for a in range(1, n_rules):
-            lf = lengths[c, a]
-            tf = features[c, a].copy()
-            ts = states[c, a].copy()
-            tm = modifiers[c, a].copy()
-            b = a - 1
-            while b >= 0:
-                lb = lengths[c, b]
-                greater = lb > lf
-                if lb == lf:
-                    greater = False
-                    for k in range(lf):
-                        if features[c, b, k] != tf[k]:
-                            greater = features[c, b, k] > tf[k]
-                            break
-                        if states[c, b, k] != ts[k]:
-                            greater = states[c, b, k] > ts[k]
-                            break
-                        if modifiers[c, b, k] != tm[k]:
-                            greater = modifiers[c, b, k] > tm[k]
-                            break
+@njit(cache=True, fastmath=False, inline="always", forceinline=True)
+def _hash_candidate_fast(features, states, modifiers, lengths, n_rules,):
+    """Calculate a deterministic 64-bit hash of a canonical RuleSet."""
+    hash_value = np.uint64(1469598103934665603)
+
+    hash_prime = np.uint64(1099511628211)
+
+    hash_value = (hash_value ^ np.uint64(n_rules)) * hash_prime
+
+    for rule_index in range(n_rules):
+        rule_length = lengths[rule_index]
+
+        hash_value = (hash_value ^ np.uint64(rule_length)) * hash_prime
+
+        for literal_index in range(rule_length):
+            # Add one so that the value zero does not behave
+            # like an empty/padding value in the hash stream.
+            hash_value = (hash_value ^ np.uint64(features[rule_index, literal_index] + 1)) * hash_prime
+            hash_value = (hash_value ^ np.uint64(states[rule_index, literal_index] + 1)) * hash_prime
+            hash_value = (hash_value ^ np.uint64(modifiers[rule_index, literal_index] + 1)) * hash_prime
+
+    return hash_value
+
+@njit(cache=True, fastmath=False, inline="always", forceinline=True)
+def _candidate_equals_stored_fast(
+    stored_features,
+    stored_states,
+    stored_modifiers,
+    stored_lengths,
+    stored_n_rules,
+    stored_index,
+    candidate_features,
+    candidate_states,
+    candidate_modifiers,
+    candidate_lengths,
+    candidate_n_rules,
+):
+    """Compare a temporary candidate with an accepted candidate."""
+    if stored_n_rules[stored_index] != candidate_n_rules:
+        return False
+
+    for rule_index in range(candidate_n_rules):
+        rule_length = candidate_lengths[rule_index]
+
+        if stored_lengths[stored_index, rule_index] != rule_length:
+            return False
+
+        for literal_index in range(rule_length):
+            if stored_features[stored_index, rule_index, literal_index] != candidate_features[rule_index, literal_index]:
+                return False
+
+            if stored_states[stored_index, rule_index, literal_index] != candidate_states[rule_index, literal_index]:
+                return False
+
+            if stored_modifiers[stored_index, rule_index, literal_index] != candidate_modifiers[rule_index, literal_index]:
+                return False
+
+    return True
+
+@njit(cache=True, fastmath=False, inline="always", forceinline=True)
+def _canonicalize_candidate_fast(features, states, modifiers, lengths, n_rules, group_ids):
+    """Canonicalize and validate one temporary RuleSet in-place.
+
+    Invalid candidates are rejected rather than shortened. This preserves
+    exactly the sampled number of rules and sampled rule lengths.
+
+    Returns
+    -------
+    valid : bool
+        True if the candidate is structurally valid.
+    """
+    # --------------------------------------------------------------
+    # Validate and sort conditions inside every rule.
+    # --------------------------------------------------------------
+    for rule_index in range(n_rules):
+        rule_length = lengths[rule_index]
+
+        for current_position in range(rule_length):
+            current_feature = features[rule_index, current_position]
+            current_state = states[rule_index, current_position]
+            current_group = group_ids[current_feature]
+
+            for previous_position in range(current_position):
+                previous_feature = features[rule_index,previous_position]
+
+                previous_state = states[rule_index, previous_position]
+
+                # Only one semantic condition is allowed for a
+                # transformed feature.
+                if current_feature == previous_feature:
+                    return False
+
+                previous_group = group_ids[previous_feature]
+
+                # Two conditions from the same one-hot group are
+                # invalid/redundant if either requires "present".
+                #
+                # Multiple "absent" conditions from the same group
+                # remain allowed.
+                if (
+                    current_group >= 0
+                    and current_group == previous_group
+                    and (current_state == 3 or previous_state == 3)
+                ):
+                    return False
+
+        # Sort conditions by:
+        # feature, state, modifier.
+        for current_position in range(1, rule_length):
+            current_feature = features[rule_index, current_position]
+            current_state = states[rule_index, current_position]
+            current_modifier = modifiers[rule_index, current_position]
+            previous_position = current_position - 1
+
+            while previous_position >= 0:
+                previous_feature = features[rule_index, previous_position]
+                previous_state = states[rule_index, previous_position]
+                previous_modifier = modifiers[rule_index, previous_position]
+
+                greater = (
+                    previous_feature > current_feature
+                    or (
+                        previous_feature == current_feature
+                        and (
+                            previous_state > current_state
+                            or (
+                                previous_state == current_state
+                                and previous_modifier > current_modifier
+                            )
+                        )
+                    )
+                )
+
                 if not greater:
                     break
-                lengths[c, b + 1] = lengths[c, b]
-                features[c, b + 1] = features[c, b]
-                states[c, b + 1] = states[c, b]
-                modifiers[c, b + 1] = modifiers[c, b]
-                b -= 1
-            lengths[c, b + 1] = lf
-            features[c, b + 1] = tf
-            states[c, b + 1] = ts
-            modifiers[c, b + 1] = tm
 
-        # Reject duplicate rules because canonicalization would reduce n_rules.
-        for r in range(1, n_rules):
-            if lengths[c, r] == lengths[c, r - 1]:
-                same = True
-                for k in range(lengths[c, r]):
-                    if (features[c, r, k] != features[c, r - 1, k] or
-                        states[c, r, k] != states[c, r - 1, k] or
-                        modifiers[c, r, k] != modifiers[c, r - 1, k]):
-                        same = False
+                features[rule_index, previous_position + 1] = previous_feature
+                states[rule_index, previous_position + 1] = previous_state
+                modifiers[rule_index, previous_position + 1] = previous_modifier
+                previous_position -= 1
+
+            features[rule_index, previous_position + 1] = current_feature
+            states[rule_index, previous_position + 1] = current_state
+            modifiers[rule_index, previous_position + 1] = current_modifier
+
+    # --------------------------------------------------------------
+    # Sort rules by:
+    # rule length, then lexicographically by conditions.
+    # --------------------------------------------------------------
+    for current_rule in range(1, n_rules):
+        current_length = lengths[current_rule]
+        current_features = features[current_rule].copy()
+        current_states = states[current_rule].copy()
+        current_modifiers = modifiers[current_rule].copy()
+        previous_rule = current_rule - 1
+
+        while previous_rule >= 0:
+            previous_length = lengths[previous_rule]
+
+            greater = previous_length > current_length
+
+            if previous_length == current_length:
+                greater = False
+
+                for literal_index in range(current_length):
+                    if features[previous_rule, literal_index,] != current_features[literal_index]:
+                        greater = features[previous_rule, literal_index] > current_features[literal_index]
                         break
-                if same:
-                    valid[c] = False
-                    break
-    return valid
 
+                    if states[previous_rule, literal_index] != current_states[literal_index]:
+                        greater = states[previous_rule, literal_index] > current_states[literal_index]
+                        break
+
+                    if modifiers[previous_rule, literal_index] != current_modifiers[literal_index]:
+                        greater = modifiers[previous_rule,literal_index] > current_modifiers[literal_index]
+                        break
+
+            if not greater:
+                break
+
+            lengths[previous_rule + 1] = lengths[previous_rule]
+            features[previous_rule + 1] = features[previous_rule]
+            states[previous_rule + 1] = states[previous_rule]
+            modifiers[previous_rule + 1] = modifiers[previous_rule]
+            previous_rule -= 1
+
+        lengths[previous_rule + 1] = current_length
+        features[previous_rule + 1] = current_features
+        states[previous_rule + 1] = current_states
+        modifiers[previous_rule + 1] = current_modifiers
+
+    # --------------------------------------------------------------
+    # Reject duplicate rules.
+    # --------------------------------------------------------------
+    for rule_index in range(1, n_rules):
+        if lengths[rule_index] != lengths[rule_index - 1]:
+            continue
+
+        same = True
+
+        for literal_index in range(lengths[rule_index]):
+            if (
+                features[rule_index, literal_index] != features[rule_index - 1, literal_index,]
+                or states[rule_index, literal_index] != states[rule_index - 1, literal_index]
+                or modifiers[rule_index, literal_index] != modifiers[rule_index - 1, literal_index]
+            ):
+                same = False
+                break
+
+        if same:
+            return False
+
+    return True
+
+@njit(cache=True, fastmath=False, parallel=False,)
+def _generate_unique_candidates_fast(
+    seed,
+    n_candidates,
+    max_sampling_attempts,
+    max_rules,
+    max_rule_length,
+    max_modifier,
+    continuous_mask,
+    group_ids,
+    sampling_type_number,
+    sampling_type_length,
+):
+    """Generate unique canonical RuleSets in a single Numba call.
+
+    Parameters
+    ----------
+    seed : int
+        Random seed.
+
+    n_candidates : int
+        Target number of unique valid RuleSets.
+
+    max_sampling_attempts : int
+        Maximum number of raw candidate draws.
+
+    max_rules : int
+        Maximum number of rules in a RuleSet.
+
+    max_rule_length : int
+        Maximum number of conditions in a rule.
+
+    max_modifier : int
+        Maximum High/Low modifier.
+
+    continuous_mask : ndarray of bool
+        Mask identifying continuous transformed features.
+
+    group_ids : ndarray of int64
+        One-hot group identifier for every transformed feature.
+        Continuous features use -1.
+
+    sampling_type_number : {1, 2}
+        Sampling strategy for the number of rules:
+
+        1 : discrete uniform
+        2 : exponential/log-uniform scale
+
+    sampling_type_length : {1, 2}
+        Sampling strategy for rule lengths:
+
+        1 : discrete uniform
+        2 : exponential/log-uniform scale
+
+    Returns
+    -------
+    features, states, modifiers, lengths, n_rules
+        Encoded accepted candidates.
+
+    attempts : int
+        Number of raw sampling attempts.
+
+    invalid_count : int
+        Number of structurally invalid candidates.
+
+    duplicate_count : int
+        Number of duplicate candidates.
+    """
+    np.random.seed(seed)
+
+    n_features = continuous_mask.shape[0]
+
+    # Final output arrays are allocated only once.
+    output_features = np.full((n_candidates, max_rules, max_rule_length), -1, dtype=np.int64)
+    output_states = np.zeros((n_candidates, max_rules, max_rule_length), dtype=np.uint8)
+    output_modifiers = np.ones((n_candidates, max_rules, max_rule_length), dtype=np.uint8)
+    output_lengths = np.zeros((n_candidates, max_rules), dtype=np.int64)
+    output_n_rules = np.zeros(n_candidates, dtype=np.int64)
+
+    # Hash-table size is the next power of two >= 2 * n_candidates.
+    # This keeps the load factor at or below 0.5.
+    hash_table_size = 1
+
+    while (hash_table_size < 2 * n_candidates):
+        hash_table_size *= 2
+
+    stored_hashes = np.zeros(hash_table_size, dtype=np.uint64)
+
+    stored_indices = np.full(hash_table_size, -1, dtype=np.int64)
+
+    # Reusable temporary candidate buffers.
+    candidate_features = np.full((max_rules, max_rule_length), -1, dtype=np.int64)
+    candidate_states = np.zeros((max_rules, max_rule_length), dtype=np.uint8)
+    candidate_modifiers = np.ones((max_rules,max_rule_length), dtype=np.uint8)
+    candidate_lengths = np.zeros(max_rules, dtype=np.int64)
+
+    accepted_count = 0
+    attempts = 0
+    invalid_count = 0
+    duplicate_count = 0
+
+    while (accepted_count < n_candidates and attempts < max_sampling_attempts):
+        attempts += 1
+
+        # Reset the reusable temporary buffers.
+        candidate_features[:, :] = -1
+        candidate_states[:, :] = 0
+        candidate_modifiers[:, :] = 1
+        candidate_lengths[:] = 0
+
+        candidate_n_rules =  _sample_structure_size(max_rules, sampling_type_number)
+
+        # ----------------------------------------------------------
+        # Generate one complete raw RuleSet.
+        # ----------------------------------------------------------
+        for rule_index in range(candidate_n_rules):
+            rule_length = _sample_structure_size(max_rule_length, sampling_type_length)
+
+            candidate_lengths[rule_index] = rule_length
+
+            for literal_index in range(rule_length):
+                feature = np.random.randint(0, n_features)
+                candidate_features[rule_index, literal_index] = feature
+
+                if continuous_mask[feature]:
+                    state = np.random.randint(0, 3)
+                    candidate_states[rule_index,literal_index] = state
+
+                    if state < 2:
+                        candidate_modifiers[rule_index, literal_index] = np.random.randint(1, max_modifier + 1)
+
+                else:
+                    candidate_states[rule_index, literal_index] = np.random.randint(3, 5)
+
+        # ----------------------------------------------------------
+        # Canonicalize and validate immediately.
+        # ----------------------------------------------------------
+        valid = _canonicalize_candidate_fast(
+            candidate_features,
+            candidate_states,
+            candidate_modifiers,
+            candidate_lengths,
+            candidate_n_rules,
+            group_ids,
+        )
+
+        if not valid:
+            invalid_count += 1
+            continue
+
+        # ----------------------------------------------------------
+        # Exact deduplication with a hash table.
+        # ----------------------------------------------------------
+        candidate_hash = (
+            _hash_candidate_fast(
+                candidate_features,
+                candidate_states,
+                candidate_modifiers,
+                candidate_lengths,
+                candidate_n_rules,
+            )
+        )
+
+        table_position = np.int64(candidate_hash & np.uint64(hash_table_size - 1))
+
+        duplicate = False
+
+        while (stored_indices[table_position] != -1):
+            stored_index = stored_indices[table_position]
+
+            if (
+                stored_hashes[table_position] == candidate_hash
+                and _candidate_equals_stored_fast(
+                    output_features,
+                    output_states,
+                    output_modifiers,
+                    output_lengths,
+                    output_n_rules,
+                    stored_index,
+                    candidate_features,
+                    candidate_states,
+                    candidate_modifiers,
+                    candidate_lengths,
+                    candidate_n_rules,
+                )
+            ):
+                duplicate = True
+                break
+
+            table_position = np.int64((table_position + 1) & (hash_table_size - 1))
+
+        if duplicate:
+            duplicate_count += 1
+            continue
+
+        # ----------------------------------------------------------
+        # Store the accepted candidate.
+        # ----------------------------------------------------------
+        output_features[accepted_count] = candidate_features
+        output_states[accepted_count] = candidate_states
+        output_modifiers[accepted_count] = candidate_modifiers
+        output_lengths[accepted_count] = candidate_lengths
+        output_n_rules[accepted_count] = candidate_n_rules
+        stored_hashes[table_position] = candidate_hash
+        stored_indices[table_position] = accepted_count
+        accepted_count += 1
+
+    return (
+        output_features[:accepted_count],
+        output_states[:accepted_count],
+        output_modifiers[:accepted_count],
+        output_lengths[:accepted_count],
+        output_n_rules[:accepted_count],
+        attempts,
+        invalid_count,
+        duplicate_count,
+    )
 
 class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
-    """Interpretable fuzzy-rule classifier using independent random RuleSets.
-
-    Candidate quotas are approximately uniform over n_rules=1..max_rules.
-    Rule lengths are sampled uniformly from 1..max_rules_len. Sampling stops
-    after obtaining n_candidates unique canonical RuleSets or after
-    max_sampling_attempts raw attempts. All unique candidates are evaluated in
-    one parallel Numba call. Accuracy ties are resolved by model simplicity.
+    """Interpretable fuzzy-rule classifier using random RuleSets.
+    
+    Candidates are generated one at a time in a compiled Numba function.
+    Each candidate is immediately canonicalized, validated and checked for
+    duplication. Sampling stops after obtaining n_candidates unique valid
+    RuleSets or after max_sampling_attempts raw draws.
+    
+    The number of rules and rule lengths can be sampled independently:
+    
+        sampling_type_number = 1
+            Discrete uniform number of rules.
+    
+        sampling_type_number = 2
+            Exponential/log-uniform number of rules.
+    
+        sampling_type_length = 1
+            Discrete uniform rule lengths.
+    
+        sampling_type_length = 2
+            Exponential/log-uniform rule lengths.
+    
+    All accepted candidates are evaluated in one parallel Numba call.
+    Accuracy ties are resolved by model simplicity.
     """
 
     def __init__(
@@ -302,7 +651,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         threshold: float = 0.5,
         n_candidates: int = 20_000,
         max_sampling_attempts: int = 1_000_000,
-        sampling_chunk_size: int = 20_000,
+        sampling_type_number: int = 1,
+        sampling_type_length: int = 1,
         class_names: Optional[Sequence[str]] = None,
         feature_names: Optional[Sequence[str]] = None,
         categorical_features: Optional[Union[Sequence[int], Sequence[bool], Sequence[str]]] = None,
@@ -319,7 +669,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         self.threshold = threshold
         self.n_candidates = n_candidates
         self.max_sampling_attempts = max_sampling_attempts
-        self.sampling_chunk_size = sampling_chunk_size
+        self.sampling_type_number = sampling_type_number
+        self.sampling_type_length = sampling_type_length
         self.class_names = class_names
         self.feature_names = feature_names
         self.categorical_features = categorical_features
@@ -415,133 +766,113 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         return np.where(positive, self.positive_class_, self.negative_class_)
 
     def _sample_unique_candidates_encoded(self):
-        """Generate and deduplicate canonical candidates without Python Conditions."""
-        rng = np.random.default_rng(self.random_state)
-        quotas = np.full(self.max_rules, self.n_candidates // self.max_rules, dtype=int)
-        quotas[: self.n_candidates % self.max_rules] += 1
-        attempt_quotas = np.full(self.max_rules, self.max_sampling_attempts // self.max_rules, dtype=int)
-        attempt_quotas[: self.max_sampling_attempts % self.max_rules] += 1
-
+        """Generate unique candidates in one compiled Numba call."""
         continuous_mask = np.zeros(self.n_transformed_features_, dtype=np.bool_)
         continuous_mask[list(self.continuous_feature_indices_)] = True
+    
         group_ids = np.full(self.n_transformed_features_, -1, dtype=np.int64)
+    
         for group_id, group in enumerate(self.categorical_feature_groups_):
             for feature in group:
                 group_ids[feature] = group_id
-
-        kept_f, kept_s, kept_m, kept_l, kept_nr = [], [], [], [], []
-        total_attempts = 0
-        total_valid = 0
-
-        for n_rules_value in range(1, self.max_rules + 1):
-            target = int(quotas[n_rules_value - 1])
-            attempt_limit = int(attempt_quotas[n_rules_value - 1])
-            attempts = 0
-            keys = set()
-            sf, sz, sm, sl = [], [], [], []
-
-            while len(keys) < target and attempts < attempt_limit:
-                n_raw = min(self.sampling_chunk_size, attempt_limit - attempts)
-                seed = int(rng.integers(0, np.iinfo(np.int32).max))
-                f, st, mod, lengths = _generate_raw_candidates_fast(
-                    seed, n_raw, n_rules_value, self._effective_max_rules_len_,
-                    self.max_literal_repetitions, continuous_mask
-                )
-                valid = _canonicalize_raw_candidates_fast(
-                    f, st, mod, lengths, n_rules_value, group_ids
-                )
-                attempts += n_raw
-                total_attempts += n_raw
-
-                for c in np.flatnonzero(valid):
-                    total_valid += 1
-                    key = (
-                        f[c].tobytes() + st[c].tobytes() + mod[c].tobytes()
-                        + lengths[c].tobytes()
-                    )
-                    if key in keys:
-                        continue
-                    keys.add(key)
-                    sf.append(f[c].copy())
-                    sz.append(st[c].copy())
-                    sm.append(mod[c].copy())
-                    sl.append(lengths[c].copy())
-                    if len(keys) >= target:
-                        break
-
-            if sf:
-                # Pad every stratum to max_rules so all strata can be
-                # concatenated and evaluated in one Numba call.
-                n_kept = len(sf)
-                padded_f = np.full(
-                    (n_kept, self.max_rules, self._effective_max_rules_len_),
-                    -1, dtype=np.int64
-                )
-                padded_s = np.zeros_like(padded_f, dtype=np.uint8)
-                padded_m = np.ones_like(padded_f, dtype=np.uint8)
-                padded_l = np.zeros((n_kept, self.max_rules), dtype=np.int64)
-                padded_f[:, :n_rules_value] = np.stack(sf)
-                padded_s[:, :n_rules_value] = np.stack(sz)
-                padded_m[:, :n_rules_value] = np.stack(sm)
-                padded_l[:, :n_rules_value] = np.stack(sl)
-                kept_f.append(padded_f)
-                kept_s.append(padded_s)
-                kept_m.append(padded_m)
-                kept_l.append(padded_l)
-                kept_nr.append(np.full(n_kept, n_rules_value, dtype=np.int64))
-            if self.verbose:
-                print(
-                    f"[Random n_rules={n_rules_value}] unique={len(keys)}/{target}, "
-                    f"attempts={attempts}/{attempt_limit}"
-                )
-
-        if kept_f:
-            features = np.concatenate(kept_f)
-            states = np.concatenate(kept_s)
-            modifiers = np.concatenate(kept_m)
-            lengths = np.concatenate(kept_l)
-            n_rules = np.concatenate(kept_nr)
+    
+        # np.random.seed used by the Numba generator requires an integer.
+        # Preserve nondeterministic sklearn semantics for random_state=None.
+        if self.random_state is None:
+            seed = int(np.random.default_rng().integers(0, np.iinfo(np.int32).max))
         else:
-            shape = (0, self.max_rules, self._effective_max_rules_len_)
-            features = np.empty(shape, dtype=np.int64)
-            states = np.empty(shape, dtype=np.uint8)
-            modifiers = np.empty(shape, dtype=np.uint8)
-            lengths = np.empty((0, self.max_rules), dtype=np.int64)
-            n_rules = np.empty(0, dtype=np.int64)
-
-        self.n_sampling_attempts_ = total_attempts
-        self.n_unique_candidates_ = features.shape[0]
-        self.n_valid_before_dedup_ = total_valid
-        self.duplicate_rate_ = (
-            1.0 - self.n_unique_candidates_ / total_valid if total_valid else 0.0
+            seed = int(self.random_state)
+    
+        (
+            features,
+            states,
+            modifiers,
+            lengths,
+            n_rules,
+            attempts,
+            invalid_count,
+            duplicate_count,
+        ) = _generate_unique_candidates_fast(
+            seed=seed,
+            n_candidates=self.n_candidates,
+            max_sampling_attempts=self.max_sampling_attempts,
+            max_rules=self.max_rules,
+            max_rule_length=self._effective_max_rules_len_,
+            max_modifier=self.max_literal_repetitions,
+            continuous_mask=continuous_mask,
+            group_ids=group_ids,
+            sampling_type_number=self.sampling_type_number,
+            sampling_type_length=self.sampling_type_length,
         )
+    
+        self.n_sampling_attempts_ = int(attempts)
+        self.n_unique_candidates_ = int(features.shape[0])
+        self.n_invalid_candidates_ = int(invalid_count)
+        self.n_duplicate_candidates_ = int(duplicate_count)
+        self.valid_sampling_attempts_ = self.n_sampling_attempts_ - self.n_invalid_candidates_
+        self.duplicate_rate_ = self.n_duplicate_candidates_ / self.valid_sampling_attempts_ if self.valid_sampling_attempts_ > 0 else 0.0
+        self.invalid_rate_ = self.n_invalid_candidates_ / self.n_sampling_attempts_ if self.n_sampling_attempts_ > 0 else 0.0
+    
         if self.n_unique_candidates_ < self.n_candidates:
             warnings.warn(
-                f"Generated {self.n_unique_candidates_} unique candidates instead "
-                f"of {self.n_candidates} after {total_attempts} attempts.",
+                f"Generated "
+                f"{self.n_unique_candidates_} "
+                f"unique candidates instead of "
+                f"{self.n_candidates} after "
+                f"{self.n_sampling_attempts_} "
+                "attempts.",
                 UserWarning,
             )
+    
         return features, states, modifiers, lengths, n_rules
 
     @staticmethod
     def _select_best_encoded(accuracies, modifiers, lengths, n_rules):
         best = 0
-        for i in range(1, len(accuracies)):
-            better_accuracy = accuracies[i] > accuracies[best] + 1e-15
-            same_accuracy = abs(accuracies[i] - accuracies[best]) <= 1e-15
+    
+        best_modifier_sum = 0
+    
+        for rule_index in range(n_rules[0]):
+            for literal_index in range(lengths[0, rule_index]):
+                best_modifier_sum += int(modifiers[0, rule_index, literal_index])
+    
+        for candidate_index in range(1, len(accuracies)):
+            better_accuracy = accuracies[candidate_index] > accuracies[best] + 1e-15
+    
+            same_accuracy = abs(accuracies[candidate_index] - accuracies[best]) <= 1e-15
+    
             if better_accuracy:
-                best = i
+                best = candidate_index
+    
+                best_modifier_sum = 0
+    
+                for rule_index in range(n_rules[best]):
+                    for literal_index in range(lengths[best, rule_index]):
+                        best_modifier_sum += int(modifiers[best, rule_index, literal_index])
+    
             elif same_accuracy:
-                complexity_i = (
-                    int(lengths[i].sum()), int(n_rules[i]),
-                    int(modifiers[i, :n_rules[i]].sum())
+                candidate_modifier_sum = 0
+    
+                for rule_index in range(n_rules[candidate_index]):
+                    for literal_index in range(lengths[candidate_index, rule_index]):
+                        candidate_modifier_sum += int(modifiers[candidate_index, rule_index, literal_index])
+    
+                complexity_candidate = (
+                    int(lengths[candidate_index].sum()),
+                    int(n_rules[candidate_index]),
+                    candidate_modifier_sum,
                 )
+    
                 complexity_best = (
-                    int(lengths[best].sum()), int(n_rules[best]),
-                    int(modifiers[best, :n_rules[best]].sum())
+                    int(lengths[best].sum()),
+                    int(n_rules[best]),
+                    best_modifier_sum,
                 )
-                if complexity_i < complexity_best:
-                    best = i
+    
+                if complexity_candidate < complexity_best:
+                    best = candidate_index
+                    best_modifier_sum = candidate_modifier_sum
+    
         return best
 
     def _decode_ruleset(self, features, states, modifiers, lengths, n_rules):
@@ -627,14 +958,24 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
 
     def _validate_parameters(self):
         self._effective_max_rules_len_ = self.max_rule_len if self.max_rule_len is not None else self.max_rules_len
-        if min(self.max_rules, self._effective_max_rules_len_, self.n_candidates, self.max_sampling_attempts, self.sampling_chunk_size) < 1:
-            raise ValueError("Size and budget parameters must be >= 1")
-        if not 1 <= self.max_literal_repetitions <= 3:
-            raise ValueError("max_literal_repetitions must be in [1, 3]")
-        if not 0.0 <= self.threshold <= 1.0:
-            raise ValueError("threshold must be in [0, 1]")
+    
+        if min(self.max_rules, self._effective_max_rules_len_, self.n_candidates, self.max_sampling_attempts,) < 1:
+            raise ValueError("Size and budget parameters must be >= 1.")
+    
+        if not (1 <= self.max_literal_repetitions <= 3):
+            raise ValueError("max_literal_repetitions must be in [1, 3].")
+    
+        if self.sampling_type_number not in {1, 2}:
+            raise ValueError("sampling_type_number must be 1 (uniform) or 2 (exponential).")
+    
+        if self.sampling_type_length not in {1, 2}:
+            raise ValueError("sampling_type_length must be 1 (uniform) or 2 (exponential).")
+    
+        if not (0.0 <= self.threshold <= 1.0):
+            raise ValueError("threshold must be in [0, 1].")
+    
         if self.preprocessed and self.continuous_features is None:
-            raise ValueError("continuous_features is required when preprocessed=True; use 'all' when appropriate")
+            raise ValueError("continuous_features is required when preprocessed=True; use 'all' when appropriate.")
 
     def _configure_preprocessed_metadata(self, n_features, names):
         if self.continuous_features == "all":
