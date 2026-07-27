@@ -23,7 +23,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import HistGradientBoostingClassifier
 
-from beam_fuzzy_rules_classifier import BeamFuzzyRulesClassifier
 from random_fuzzy_rules_classifier import RandomFuzzyRulesClassifier
 from gpr_algorithm import GPR
 from gpr_fast import GPR_FAST
@@ -77,7 +76,7 @@ RANDOM_PARAMS = {
     "max_rules_len":  6,
     "max_literal_repetitions": 3,
     "threshold": 0.5,
-    "n_candidates": 50_000,
+    "n_candidates": 10_000,
     "max_sampling_attempts": 1_000_000,
     "sampling_type_number": 2,
     "sampling_type_length": 2,
@@ -410,15 +409,7 @@ def make_estimators(
                 feature_names=transformed_feature_names,
                 random_state=RANDOM_STATE
             )
-        ),      
-        "BeamFuzzyRules": (
-            BeamFuzzyRulesClassifier(
-                **BEAM_PARAMS,
-                continuous_features=continuous_features,
-                categorical_feature_groups=categorical_feature_groups,
-                feature_names=transformed_feature_names,
-            )
-        ),
+        ),     
 
         "GPR": (
             GPR(
@@ -467,31 +458,19 @@ def warm_up_numba():
 
     y_warm = np.array([0, 1] * 50)
 
-    warm_model = BeamFuzzyRulesClassifier(
-        max_rules=2,
-        max_rules_len=2,
-        max_literal_repetitions=3,
-        beam_width=2,
-        threshold=0.5,
-        preprocessed=True,
-        continuous_features="all",
-        verbose=0,
-    )
-
-    warm_model2 = RandomFuzzyRulesClassifier(
+    warm_model = RandomFuzzyRulesClassifier(
         max_rules=2,
         max_rules_len=2,
         max_literal_repetitions=2,
         threshold=0.5,
         n_candidates=50,
         max_sampling_attempts=500,
-        sampling_chunk_size=100,
         preprocessed=True,
         continuous_features="all",
         random_state=RANDOM_STATE,
     )
 
-    warm_model3 = GPR_FAST(
+    warm_model2 = GPR_FAST(
         feature_names=[f"x{i}" for i in range(X_warm.shape[1])],
         n_populations=2,
         n_generations=2,
@@ -505,12 +484,10 @@ def warm_up_numba():
 
     warm_model.fit(X_warm, y_warm)
     warm_model2.fit(X_warm, y_warm)
-    warm_model3.fit(X_warm, y_warm)
     
     # Compile the prediction scoring function as well.
     warm_model.predict(X_warm[:10])
     warm_model2.predict(X_warm[:10])
-    warm_model3.predict(X_warm[:10])
     print("Numba warm-up completed.")
 
 
@@ -565,7 +542,7 @@ def append_error(error_record):
     error_df.to_csv(ERRORS_FILE, index=False)
 
 
-def run_benchmark(dataset_dictionary):
+def run_benchmark(dataset_dictionary, make_estimators):
     results = load_existing_results()
 
     completed = {
@@ -799,8 +776,3 @@ def run_benchmark(dataset_dictionary):
             })
 
     return results
-
-
-if __name__ == "__main__":
-    warm_up_numba()
-    results = run_benchmark(UCI_DATASETS)
