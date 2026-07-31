@@ -1,0 +1,19 @@
+[project]
+name = "rule-based-classification-main-environment"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "random-fuzzy-rules",
+    "numpy==2.2.6",
+    "pandas==2.2.3",
+    "scipy==1.15.3",
+    "scikit-learn==1.5.2",
+    "numba==0.61.2",
+    "ucimlrepo==0.0.7",
+    "aeon==1.1.0",
+    "matplotlib==3.10.7",
+    "seaborn==0.13.2",
+]
+
+[tool.uv.sources]
+random-fuzzy-rules = { path = "../../packages/random-fuzzy-rules", editable = true }

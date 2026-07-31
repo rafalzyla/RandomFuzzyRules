@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "random-fuzzy-rules"
+version = "0.1.0"
+description = "Interpretable binary classification with randomly generated fuzzy rule sets"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0,<3.0",
+    "numba>=0.60,<0.62",
+    "scikit-learn>=1.5,<1.6",
+]
+
+[project.optional-dependencies]
+pandas = [
+    "pandas>=2.2,<2.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

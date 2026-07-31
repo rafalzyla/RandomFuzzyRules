@@ -1,0 +1,15 @@
+[project]
+name = "rule-based-classification-gpr-environment"
+version = "0.1.0"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "gpr-fast",
+    "setuptools==80.10.2",
+    "deap==1.3.1",
+    "geppy==0.1.3",
+    "numpy==1.21.6",
+    "numba==0.57.1",
+]
+
+[tool.uv.sources]
+gpr-fast = { path = "../../packages/gpr-fast", editable = true }

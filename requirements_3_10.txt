@@ -1,8 +1,0 @@
-setuptools==80.10.2
-numpy==1.21.6
-scipy==1.9.0
-scikit-learn==1.0.2
-pandas==2.0.3
-numba==0.57.1
-gpr-algorithm==1.0.0
-ucimlrepo==0.0.7
