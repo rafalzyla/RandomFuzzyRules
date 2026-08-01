@@ -1,7 +1,7 @@
 """One-factor-at-a-time ablation study for RandomFuzzyRulesClassifier.
 
 Each key in ABLATION_CONFIGS defines a separate study. For a selected study,
-all parameters not varied retain their values from DEFAULTS. Results and errors
+all parameters not varied retain their values from BASELINE_DEFAULTS. Results and errors
 are written to separate CSV files under results/ablation/<study_name>/.
 The same folder also receives:
 
@@ -22,97 +22,12 @@ import numpy as np
 import pandas as pd
 
 from experiments import utils
+from experiments.ablation.config import ABLATION_CONFIGS, BASELINE_DEFAULTS, UCI_DATASETS
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 ALPHA = 0.05
 
-# ---------------------------------------------------------------------------
-# Default RandomFuzzyRules configuration
-# ---------------------------------------------------------------------------
-DEFAULTS = {
-    "max_rules": 6,
-    "max_rules_len": 6,
-    "max_literal_repetitions": 3,
-    "threshold": 0.5,
-    "n_candidates": 10_000,
-    "max_sampling_attempts": 1_000_000,
-    "sampling_type_number": 2,
-    "sampling_type_length": 2,
-    "preprocessed": True,
-}
-
-# ---------------------------------------------------------------------------
-# One-factor-at-a-time ablation grid
-# ---------------------------------------------------------------------------
-ABLATION_CONFIGS = {
-    "max_rules": [2, 3, 4, 5, 6, 7],
-    "max_rules_len": [2, 3, 4, 5, 6, 7],
-    "max_literal_repetitions": [1, 2, 3],
-    "n_candidates": [
-        1_000,
-        5_000,
-        10_000,
-        25_000,
-        50_000,
-        100_000,
-    ],
-    "max_sampling_attempts": [
-        20_000,
-        100_000,
-        1_000_000,
-    ],
-    "sampling": [
-        {
-            "sampling_type_number": 1,
-            "sampling_type_length": 1,
-        },
-        {
-            "sampling_type_number": 1,
-            "sampling_type_length": 2,
-        },
-        {
-            "sampling_type_number": 2,
-            "sampling_type_length": 1,
-        },
-        {
-            "sampling_type_number": 2,
-            "sampling_type_length": 2,
-        },
-    ],
-}
-
 OUTPUT_ROOT = Path("results") / "ablation"
-
-UCI_DATASETS = {
-    14: "Breast Cancer",
-    15: "Breast Cancer Wisconsin Original",
-    17: "Breast Cancer Wisconsin Diagnostic",
-    27: "Credit Approval",
-    43: "Haberman Survival",
-    45: "Heart Disease",
-    46: "Hepatitis",
-    52: "Ionosphere",
-    74: "Musk Version 1",
-    75: "Musk Version 2",
-    94: "Spambase",
-    95: "SPECT Heart",
-    105: "Congressional Voting Records",
-    144: "Statlog German Credit",
-    151: "Connectionist Bench Sonar",
-    161: "Mammographic Mass",
-    174: "Parkinsons",
-    176: "Blood Transfusion Service Center",
-    222: "Bank Marketing",
-    225: "Indian Liver Patient Dataset",
-    264: "EEG Eye State",
-    267: "Banknote Authentication",
-    277: "Thoracic Surgery",
-    327: "Phishing Websites",
-    329: "Diabetic Retinopathy Debrecen",
-    451: "Breast Cancer Coimbra",
-    519: "Heart Failure Clinical Records",
-    529: "Early Stage Diabetes Risk Prediction",
-}
 
 # ---------------------------------------------------------------------------
 # Configuration and naming helpers
@@ -160,7 +75,7 @@ def _study_paths(study_name: str) -> tuple[Path, Path, Path]:
     )
 
 def _build_parameters(study_name: str, value: Any) -> dict[str, Any]:
-    parameters = dict(DEFAULTS)
+    parameters = dict(BASELINE_DEFAULTS)
 
     if study_name == "sampling":
         parameters.update(value)
@@ -219,71 +134,6 @@ def run_ablation_study(study_name: str) -> None:
         errors_file=errors_file
     )
 
-def _load_dataset_means(results_file: Path, study_name: str,) -> pd.DataFrame:
-    if not results_file.exists():
-        raise FileNotFoundError(f"Results file was not found: {results_file}")
-
-    results = pd.read_csv(results_file)
-
-    required_columns = {
-        "dataset_id",
-        "dataset_name",
-        "estimator",
-        "accuracy",
-        "fit_time",
-    }
-    missing = required_columns - set(results.columns)
-    if missing:
-        raise ValueError(
-            f"Missing columns in {results_file}: {sorted(missing)}"
-        )
-
-    expected_estimators = [
-        _estimator_name(study_name, value)
-        for value in ABLATION_CONFIGS[study_name]
-    ]
-
-    results = results[results["estimator"].isin(expected_estimators)].copy()
-
-    if results.empty:
-        raise ValueError(f"No results found for study {study_name!r}.")
-
-    dataset_means = (
-        results.groupby(
-            [
-                "dataset_id",
-                "dataset_name",
-                "estimator",
-            ],
-            as_index=False,
-        )
-        .agg(
-            accuracy=("accuracy", "mean"),
-            fit_time=("fit_time", "mean"),
-            completed_folds=("fold", "nunique"),
-        )
-    )
-    
-    dataset_means = dataset_means[dataset_means["completed_folds"] == utils.N_SPLITS].copy()
-    
-    complete_matrix = dataset_means.pivot(
-        index=["dataset_id", "dataset_name"],
-        columns="estimator",
-        values="accuracy",
-    )
-    
-    complete_datasets = complete_matrix.dropna(axis=0, how="any").index
-
-    dataset_means = dataset_means.set_index(["dataset_id", "dataset_name"])
-    dataset_means = dataset_means.loc[dataset_means.index.isin(complete_datasets)].reset_index()
-
-    if dataset_means.empty:
-        raise ValueError(
-            f"No dataset is complete for every variant in {study_name!r}."
-        )
-
-    return dataset_means
-
 
 def _display_labels(study_name: str) -> dict[str, str]:
     return {
@@ -297,17 +147,23 @@ def _display_labels(study_name: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 def generate_study_outputs(study_name: str) -> None:
     study_dir, results_file, _ = _study_paths(study_name)
-    dataset_means = _load_dataset_means(results_file, study_name)
+    estimator_order = [
+        _estimator_name(study_name, value)
+        for value in ABLATION_CONFIGS[study_name]
+    ]
+    
+    dataset_means = (
+        utils.load_complete_dataset_means(
+            results_file=results_file,
+            estimator_order=estimator_order,
+            metrics=("accuracy", "fit_time"),
+        )
+    )
 
     dataset_means.to_csv(
         study_dir / "dataset_mean_results.csv",
         index=False,
     )
-
-    estimator_order = [
-        _estimator_name(study_name, value)
-        for value in ABLATION_CONFIGS[study_name]
-    ]
     
     display_labels = _display_labels(study_name)
     

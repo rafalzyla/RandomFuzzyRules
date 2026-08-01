@@ -625,6 +625,165 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
 
     return results
 
+
+def load_complete_dataset_means(
+    results_file,
+    estimator_order,
+    metrics=("accuracy", "fit_time"),
+    n_splits=N_SPLITS,
+):
+    """Load and aggregate complete cross-validation results by dataset.
+
+    Fold-level results are averaged separately for every dataset and
+    estimator. Only dataset-estimator combinations containing exactly
+    ``n_splits`` distinct folds are retained. Finally, only datasets with
+    complete results for every requested estimator are returned.
+
+    Parameters
+    ----------
+    results_file : str or pathlib.Path
+        Path to the fold-level CSV file.
+
+    estimator_order : sequence of str
+        Identifiers of estimators required for the comparison. The order is
+        preserved by downstream plotting functions.
+
+    metrics : sequence of str, default=("accuracy", "fit_time")
+        Fold-level metric columns to average for every dataset-estimator
+        combination.
+
+    n_splits : int, default=N_SPLITS
+        Required number of distinct folds for a result to be considered
+        complete.
+
+    Returns
+    -------
+    dataset_means : pandas.DataFrame
+        Dataset-level results containing one row per complete
+        dataset-estimator combination. The returned frame includes averaged
+        metric columns and ``completed_folds``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``results_file`` does not exist.
+
+    ValueError
+        If required columns are absent, requested estimators have no results,
+        or no dataset contains complete results for all estimators.
+    """
+    results_file = Path(results_file)
+
+    if not results_file.exists():
+        raise FileNotFoundError(
+            f"Results file was not found: {results_file}"
+        )
+
+    results = pd.read_csv(results_file)
+
+    required_columns = {
+        "dataset_id",
+        "dataset_name",
+        "fold",
+        "estimator",
+        *metrics,
+    }
+
+    missing_columns = required_columns - set(results.columns)
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing columns in {results_file}: "
+            f"{sorted(missing_columns)}"
+        )
+
+    estimator_order = list(estimator_order)
+
+    results = results[results["estimator"].isin(estimator_order)].copy()
+
+    if results.empty:
+        raise ValueError(
+            "No results were found for the requested "
+            f"estimators: {estimator_order}"
+        )
+
+    aggregation = {
+        metric: (metric, "mean")
+        for metric in metrics
+    }
+
+    aggregation["completed_folds"] = ("fold", "nunique")
+
+    dataset_means = (
+        results.groupby(
+            [
+                "dataset_id",
+                "dataset_name",
+                "estimator",
+            ],
+            as_index=False,
+        )
+        .agg(**aggregation)
+    )
+
+    dataset_means = dataset_means[dataset_means["completed_folds"] == n_splits].copy()
+
+    if dataset_means.empty:
+        raise ValueError(
+            "No estimator has a complete set of "
+            f"{n_splits} folds."
+        )
+
+    completeness_matrix = (
+        dataset_means.pivot(
+            index=[
+                "dataset_id",
+                "dataset_name",
+            ],
+            columns="estimator",
+            values="completed_folds",
+        )
+    )
+
+    missing_estimators = [
+        estimator
+        for estimator in estimator_order
+        if estimator
+        not in completeness_matrix.columns
+    ]
+
+    if missing_estimators:
+        raise ValueError(
+            "Missing complete results for estimators: "
+            f"{missing_estimators}"
+        )
+
+    complete_dataset_index = (
+        completeness_matrix[
+            estimator_order
+        ]
+        .dropna(
+            axis=0,
+            how="any",
+        )
+        .index
+    )
+
+    dataset_means = dataset_means.set_index(["dataset_id", "dataset_name"])
+
+    dataset_means = dataset_means.loc[
+        dataset_means.index.isin(
+            complete_dataset_index
+        )
+    ].reset_index()
+
+    if dataset_means.empty:
+        raise ValueError(
+            "No dataset has complete results for every requested estimator."
+        )
+
+    return dataset_means
+
 # plotting utilities
 def metric_matrix(
     dataset_results,
