@@ -19,6 +19,8 @@ from sklearn.metrics import (
     f1_score,
     roc_auc_score,
 )
+import matplotlib.pyplot as plt
+from aeon.visualisation import plot_boxplot, plot_critical_difference
 
 RANDOM_STATE = 42
 N_SPLITS = 10
@@ -622,3 +624,138 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
             }, errors_file)
 
     return results
+
+# plotting utilities
+def metric_matrix(
+    dataset_results,
+    metric,
+    estimator_order,
+    display_labels=None,
+):
+    """Build a complete dataset-by-estimator matrix for one metric.
+
+    Parameters
+    ----------
+    dataset_results : pandas.DataFrame
+        Dataset-level results containing ``dataset_name``, ``estimator``, and
+        the selected metric. Values should already be averaged across folds.
+
+    metric : str
+        Name of the metric column to place in the matrix.
+
+    estimator_order : sequence of str
+        Estimator identifiers in the desired plotting order.
+
+    display_labels : mapping of str to str or None, default=None
+        Optional mapping from estimator identifiers to human-readable labels.
+
+    Returns
+    -------
+    matrix : pandas.DataFrame
+        Complete dataset-by-estimator matrix. Datasets with a missing result
+        for any requested estimator are removed.
+    """
+    matrix = dataset_results.pivot(
+        index="dataset_name",
+        columns="estimator",
+        values=metric,
+    )
+
+    missing_estimators = [
+        estimator
+        for estimator in estimator_order
+        if estimator not in matrix.columns
+    ]
+    if missing_estimators:
+        raise ValueError(
+            "Missing estimators in dataset-level results: "
+            f"{missing_estimators}"
+        )
+
+    matrix = matrix[list(estimator_order)]
+    matrix = matrix.dropna(axis=0, how="any")
+
+    if matrix.empty:
+        raise ValueError(
+            f"No complete datasets are available for metric {metric!r}."
+        )
+
+    if display_labels is not None:
+        matrix = matrix.rename(columns=display_labels)
+
+    return matrix
+
+
+def draw_critical_difference_accuracy(
+    dataset_results,
+    estimator_order,
+    output_file,
+    title,
+    display_labels=None,
+    alpha=0.05,
+):
+    """Create and save an Accuracy critical-difference diagram."""
+    matrix = metric_matrix(
+        dataset_results=dataset_results,
+        metric="accuracy",
+        estimator_order=estimator_order,
+        display_labels=display_labels,
+    )
+
+    if matrix.shape[1] < 2:
+        raise ValueError(
+            "At least two estimators are required for a critical-difference "
+            "diagram."
+        )
+
+    fig, ax = plot_critical_difference(
+        scores=matrix.to_numpy(),
+        labels=list(matrix.columns),
+        lower_better=False,
+        test="wilcoxon",
+        correction="holm",
+        alpha=alpha,
+        width=max(8, 1.25 * matrix.shape[1]),
+        textspace=2.0,
+    )
+    ax.set_title(title)
+
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_file, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return matrix
+
+
+def draw_mean_fit_time(
+    dataset_results,
+    estimator_order,
+    output_file,
+    title,
+    display_labels=None,
+):
+    """Create and save a boxplot of per-dataset mean training times."""
+    matrix = metric_matrix(
+        dataset_results=dataset_results,
+        metric="fit_time",
+        estimator_order=estimator_order,
+        display_labels=display_labels,
+    )
+
+    fig, ax = plot_boxplot(
+        results=matrix.to_numpy(),
+        labels=list(matrix.columns),
+        relative=False,
+        plot_type="boxplot",
+        outliers=True,
+        title=title,
+    )
+    ax.set_ylabel("Mean training time per dataset (seconds)")
+    ax.set_xlabel("Configuration")
+    ax.set_yscale("linear")
+
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_file, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return matrix
