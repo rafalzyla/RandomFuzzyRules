@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import sys
 import time
 import traceback
 
 import numpy as np
+import numba
+
+
+numba_threads = os.environ.get("NUMBA_NUM_THREADS")
+
+if numba_threads is not None:
+    numba.set_num_threads(int(numba_threads))
 
 with contextlib.redirect_stdout(sys.stderr):
     from gpr_fast import GPR_FAST

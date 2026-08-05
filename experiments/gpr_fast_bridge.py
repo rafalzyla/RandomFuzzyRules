@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+import os
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -71,6 +72,9 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
     worker_module : str, default="experiments.gpr_fast_worker"
         Python module executed in the worker environment.
 
+    n_jobs : int, default=None
+        Number of CPU cores used during computations.
+
     Attributes
     ----------
     classes_ : ndarray
@@ -107,6 +111,7 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
         gpr_project=None,
         uv_executable="uv",
         worker_module="experiments.gpr_fast_worker",
+        n_jobs=None
     ):
         self.n_populations = n_populations
         self.n_generations = n_generations
@@ -120,6 +125,7 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
         self.gpr_project = gpr_project
         self.uv_executable = uv_executable
         self.worker_module = worker_module
+        self.n_jobs = n_jobs
 
     def fit(self, X, y):
         """Fit GPR_FAST in the persistent Python 3.10 worker."""
@@ -252,6 +258,38 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
         return output
 
     def _start_worker(self):
+        worker_environment = os.environ.copy()
+
+        if self.n_jobs is not None:
+            n_jobs = int(self.n_jobs)
+        
+            if n_jobs == -1:
+                for variable in (
+                    "NUMBA_NUM_THREADS",
+                    "OMP_NUM_THREADS",
+                    "MKL_NUM_THREADS",
+                    "OPENBLAS_NUM_THREADS",
+                    "BLIS_NUM_THREADS",
+                    "NUMEXPR_NUM_THREADS",
+                ):
+                    worker_environment.pop(variable, None)
+        
+            elif n_jobs >= 1:
+                thread_count = str(n_jobs)
+        
+                for variable in (
+                    "NUMBA_NUM_THREADS",
+                    "OMP_NUM_THREADS",
+                    "MKL_NUM_THREADS",
+                    "OPENBLAS_NUM_THREADS",
+                    "BLIS_NUM_THREADS",
+                    "NUMEXPR_NUM_THREADS",
+                ):
+                    worker_environment[variable] = thread_count
+        
+            else:
+                raise ValueError("n_jobs must be None, -1, or a positive integer.")
+                
         repository_root = Path(__file__).resolve().parents[1]
         project = (
             Path(self.gpr_project).resolve()
@@ -292,6 +330,7 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
             text=True,
             encoding="utf-8",
             bufsize=1,
+            env=worker_environment,
         )
         response = self._read_response()
         if response.get("status") != "ready":

@@ -13,6 +13,7 @@ dependencies = [
     "aeon==1.1.0",
     "matplotlib==3.10.7",
     "seaborn==0.13.2",
+    "imodels==3.0.0",
 ]
 
 [tool.uv.sources]
