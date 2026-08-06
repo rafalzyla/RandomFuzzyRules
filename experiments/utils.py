@@ -1,4 +1,4 @@
-﻿import gc
+import gc
 import time
 import traceback
 from pathlib import Path
@@ -55,11 +55,106 @@ def get_variable_type_map(dataset):
 
     return result
 
+DROP_COLUMNS = {
+    # DARWIN: participant identifier.
+    732: {"ID",},
+}
 
-def clean_features(X, dataset):
+CATEGORICAL_COLUMNS = {
+    # Default of Credit Card Clients.
+    350: {
+        "X2",
+        "X3",
+        "X4",
+    },
+
+    # Online Shoppers Purchasing Intention.
+    468: {
+        "Month",
+        "OperatingSystems",
+        "Browser",
+        "Region",
+        "TrafficType",
+        "VisitorType",
+        "Weekend",
+    },
+}
+
+def normalize_text_series(series):
+    """Normalize textual UCI values while preserving missing entries."""
+    if not (
+        pd.api.types.is_object_dtype(series)
+        or pd.api.types.is_string_dtype(series)
+        or isinstance(
+            series.dtype,
+            pd.CategoricalDtype,
+        )
+    ):
+        return series
+
+    normalized = series.astype("string").str.strip()
+
+    missing_values = {marker.lower() for marker in MISSING_MARKERS if marker}
+    missing_mask = normalized.str.lower().isin(missing_values)
+
+    normalized = normalized.mask(missing_mask, pd.NA)
+
+    # Return object dtype with ordinary np.nan values. This interacts more
+    # predictably with SimpleImputer and OneHotEncoder than pd.NA in a mixed
+    # object column.
+    normalized = normalized.astype("object").where(normalized.notna(), np.nan)
+
+    return normalized
+
+def resolve_columns(available_columns, requested_columns):
+    """Resolve configured column names case-insensitively."""
+    available_by_normalized_name = {
+        str(column).strip().casefold(): column
+        for column in available_columns
+    }
+
+    resolved = set()
+
+    for requested in requested_columns:
+        key = str(requested).strip().casefold()
+
+        if key in available_by_normalized_name:
+            resolved.add(available_by_normalized_name[key])
+
+    return resolved
+
+def clean_features(X, dataset, dataset_id):
     """Clean feature values and infer numerical/categorical columns."""
     X = X.copy()
+
+    # Normalize whitespace and textual missing-value markers before type
+    # inference. This is especially important for Adult and Chronic Kidney
+    # Disease.
+    for column in X.columns:
+        X[column] = normalize_text_series(X[column])
+
     X = X.replace(MISSING_MARKERS, np.nan)
+
+    requested_drop_columns = DROP_COLUMNS.get(dataset_id, set())
+
+    resolved_drop_columns = (
+        resolve_columns(
+            available_columns=X.columns,
+            requested_columns=requested_drop_columns,
+        )
+    )
+
+    if resolved_drop_columns:
+        X = X.drop(columns=list(resolved_drop_columns))
+
+    requested_categorical = CATEGORICAL_COLUMNS.get(dataset_id, set())
+
+    forced_categorical = (
+        resolve_columns(
+            available_columns=X.columns,
+            requested_columns=requested_categorical,
+        )
+    )
 
     variable_types = get_variable_type_map(dataset)
 
@@ -68,55 +163,64 @@ def clean_features(X, dataset):
     columns_to_drop = []
 
     for column in X.columns:
-        declared_type = variable_types.get(str(column), "").lower()
+        declared_type = variable_types.get(str(column), "").strip().lower()
 
-        # Remove a column if it contains no observed values.
         if X[column].notna().sum() == 0:
             columns_to_drop.append(column)
             continue
 
-        # Prefer the variable type supplied by UCI.
-        if declared_type in {"categorical", "binary"}:
-            X[column] = X[column].astype("object")
+        if column in forced_categorical or declared_type in {"categorical", "binary"}:
+            X[column] = normalize_text_series(X[column]).astype("object")
+
             categorical_columns.append(column)
             continue
 
-        if declared_type in {
-            "integer",
-            "continuous",
-            "real",
-            "numeric",
-        }:
-            X[column] = pd.to_numeric(
-                X[column],
-                errors="coerce",
-            ).astype(float)
-
+        if declared_type in {"integer", "continuous", "real", "numeric"}:
+            converted = pd.to_numeric(X[column], errors="coerce").astype(float)
+            if converted.notna().sum() == 0:
+                columns_to_drop.append(column)
+                continue
+            
+            X[column] = converted
             numerical_columns.append(column)
             continue
 
-        # Fallback for variables whose type is missing or ambiguous.
-        converted = pd.to_numeric(
-            X[column],
-            errors="coerce",
-        )
+        converted = pd.to_numeric(X[column], errors="coerce",)
 
         original_non_missing = X[column].notna().sum()
+
         converted_non_missing = converted.notna().sum()
 
-        conversion_ratio = (
-            converted_non_missing / original_non_missing
-        )
+        if original_non_missing == 0:
+            columns_to_drop.append(column)
+            continue
+
+        conversion_ratio = converted_non_missing / original_non_missing
 
         if conversion_ratio >= 0.95:
-            X[column] = converted.astype(float)
+            X[column] = (converted.astype(float))
             numerical_columns.append(column)
         else:
-            X[column] = X[column].astype("object")
+            X[column] = normalize_text_series(X[column]).astype("object")
             categorical_columns.append(column)
 
     if columns_to_drop:
         X = X.drop(columns=columns_to_drop)
+
+        categorical_columns = [
+            column
+            for column in categorical_columns
+            if column not in columns_to_drop
+        ]
+
+        numerical_columns = [
+            column
+            for column in numerical_columns
+            if column not in columns_to_drop
+        ]
+
+    if not numerical_columns and not categorical_columns:
+        raise ValueError(f"Dataset {dataset_id} has no usable feature columns.")
 
     return (
         X,
@@ -124,22 +228,36 @@ def clean_features(X, dataset):
         categorical_columns,
     )
 
-
 def prepare_target(dataset_id, y_frame):
-    """Convert a UCI target into a binary NumPy array."""
+    """Convert a UCI target into a binary target"""
     if y_frame is None or y_frame.empty:
         raise ValueError("Dataset has no target column.")
 
     if y_frame.shape[1] != 1:
         raise ValueError(
-            f"Expected one target column, found {y_frame.shape[1]}: "
+            f"Expected one target column for dataset "
+            f"{dataset_id}, found {y_frame.shape[1]}: "
             f"{list(y_frame.columns)}"
         )
 
     y = y_frame.iloc[:, 0].copy()
-    y = y.replace(MISSING_MARKERS, np.nan)
 
-    # Special case: UCI Heart Disease.
+    y = normalize_text_series(y)
+
+    # Adult sometimes contains labels originating from separate train and
+    # test files, where test labels may have a trailing period.
+    if dataset_id == 2:
+        y = (
+            pd.Series(y)
+            .astype("string")
+            .str.strip()
+            .str.removesuffix(".")
+            .astype("object")
+        )
+
+        y = y.where(pd.Series(y).notna(), np.nan)
+
+    # UCI Heart Disease.
     # 0 = no disease; values 1-4 = presence of disease.
     if dataset_id == 45:
         y_numeric = pd.to_numeric(y, errors="coerce")
@@ -147,42 +265,102 @@ def prepare_target(dataset_id, y_frame):
         y_binary[y_numeric.isna()] = np.nan
         return y_binary
 
+    # Vertebral Column officially defines both a three-class and a binary
+    # task. Disk Hernia and Spondylolisthesis are merged into Abnormal.
+    if dataset_id == 212:
+        normalized = (
+            pd.Series(y)
+            .astype("string")
+            .str.strip()
+            .str.casefold()
+        )
+
+        mapping = {
+            "no": "Normal",
+            "normal": "Normal",
+            "dh": "Abnormal",
+            "sl": "Abnormal",
+            "ab": "Abnormal",
+            "abnormal": "Abnormal",
+        }
+
+        mapped = normalized.map(mapping)
+
+        mapped[normalized.isna()] = np.nan
+
+        unknown_values = sorted(set(normalized.dropna().unique()) - set(mapping))
+
+        if unknown_values:
+            raise ValueError(
+                "Unexpected Vertebral Column target values: "
+                f"{unknown_values}"
+            )
+
+        y = mapped
+
+    y = pd.Series(y).replace(MISSING_MARKERS, np.nan)
+
     return y
 
-
-def load_uci_dataset(dataset_id, expected_name=None):
+def load_uci_dataset(dataset_id):
     """Download and clean one UCI dataset."""
-
     dataset = fetch_ucirepo(id=dataset_id)
+
+    if dataset.data.features is None or dataset.data.features.empty:
+        raise ValueError(f"Dataset {dataset_id} has no feature matrix.")
+
+    if dataset.data.targets is None or dataset.data.targets.empty:
+        raise ValueError(f"Dataset {dataset_id} has no target matrix.")
 
     X = dataset.data.features.copy()
     y_raw = dataset.data.targets.copy()
 
-    y = prepare_target(dataset_id, y_raw)
+    y = prepare_target(dataset_id=dataset_id, y_frame=y_raw)
 
-    # Remove observations with missing target.
     valid_target = pd.Series(y).notna().to_numpy()
+
     X = X.loc[valid_target].reset_index(drop=True)
+
     y = pd.Series(y).loc[valid_target].reset_index(drop=True)
 
-    # Remove duplicated columns
     X = X.T.drop_duplicates(keep="first").T
 
-    X, numerical_columns, categorical_columns = clean_features(X, dataset)
+    (
+        X,
+        numerical_columns,
+        categorical_columns,
+    ) = clean_features(
+        X=X,
+        dataset=dataset,
+        dataset_id=dataset_id,
+    )
 
-    # Generic binary encoding.
-    unique_classes = pd.Series(y).dropna().unique()
+    # Normalize target labels once more after filtering. This ensures that
+    # labels differing only in whitespace are treated as one class.
+    y = normalize_text_series(y)
 
-    if len(unique_classes) != 2:
-        raise ValueError(
-            f"Dataset {dataset_id} is not binary after target preparation. "
-            f"Classes: {unique_classes}"
+    if pd.Series(y).isna().any():
+        raise RuntimeError(
+            f"Dataset {dataset_id} still contains missing target values after filtering."
         )
 
     encoder = LabelEncoder()
-    y_encoded = encoder.fit_transform(y.astype(str)).astype(np.int64)
+    y_encoded = encoder.fit_transform(pd.Series(y).astype(str)).astype(np.int64)
 
-    result = {
+    class_counts = np.bincount(y_encoded)
+    
+    if len(class_counts) != 2:
+        raise ValueError(f"Dataset {dataset_id} produced {len(class_counts)} encoded classes.")
+    
+    if class_counts.min() < N_SPLITS:
+        raise ValueError(
+            f"Dataset {dataset_id} has only "
+            f"{class_counts.min()} observations in the "
+            f"smallest class, fewer than "
+            f"n_splits={N_SPLITS}."
+        )
+
+    return {
         "dataset_id": dataset_id,
         "dataset_name": dataset.metadata.name,
         "X": X,
@@ -192,8 +370,6 @@ def load_uci_dataset(dataset_id, expected_name=None):
         "categorical_columns": categorical_columns,
     }
 
-    return result
-    
 
 def get_transformed_feature_metadata(
     fitted_preprocessor,
@@ -422,10 +598,7 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
         )
 
         try:
-            data = load_uci_dataset(
-                dataset_id=dataset_id,
-                expected_name=expected_name,
-            )
+            data = load_uci_dataset(dataset_id=dataset_id)
 
             X = data["X"]
             y = np.asarray(data["y"], dtype=np.int64)
