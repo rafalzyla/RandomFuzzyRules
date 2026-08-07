@@ -35,26 +35,6 @@ MISSING_MARKERS = [
     "",
 ]
 
-
-def get_variable_type_map(dataset):
-    """Return a mapping: variable name -> UCI variable type."""
-    variables = dataset.variables
-
-    if variables is None or variables.empty:
-        return {}
-
-    result = {}
-
-    for _, row in variables.iterrows():
-        name = row.get("name")
-        role = str(row.get("role", "")).lower()
-        variable_type = str(row.get("type", ""))
-
-        if role == "feature" and name is not None:
-            result[str(name)] = variable_type
-
-    return result
-
 DROP_COLUMNS = {
     # DARWIN: participant identifier.
     732: {"ID",},
@@ -79,6 +59,27 @@ CATEGORICAL_COLUMNS = {
         "Weekend",
     },
 }
+
+
+def get_variable_type_map(dataset):
+    """Return a mapping: variable name -> UCI variable type."""
+    variables = dataset.variables
+
+    if variables is None or variables.empty:
+        return {}
+
+    result = {}
+
+    for _, row in variables.iterrows():
+        name = row.get("name")
+        role = str(row.get("role", "")).lower()
+        variable_type = str(row.get("type", ""))
+
+        if role == "feature" and name is not None:
+            result[str(name)] = variable_type
+
+    return result
+
 
 def normalize_text_series(series):
     """Normalize textual UCI values while preserving missing entries."""
@@ -268,35 +269,7 @@ def prepare_target(dataset_id, y_frame):
     # Vertebral Column officially defines both a three-class and a binary
     # task. Disk Hernia and Spondylolisthesis are merged into Abnormal.
     if dataset_id == 212:
-        normalized = (
-            pd.Series(y)
-            .astype("string")
-            .str.strip()
-            .str.casefold()
-        )
-
-        mapping = {
-            "no": "Normal",
-            "normal": "Normal",
-            "dh": "Abnormal",
-            "sl": "Abnormal",
-            "ab": "Abnormal",
-            "abnormal": "Abnormal",
-        }
-
-        mapped = normalized.map(mapping)
-
-        mapped[normalized.isna()] = np.nan
-
-        unknown_values = sorted(set(normalized.dropna().unique()) - set(mapping))
-
-        if unknown_values:
-            raise ValueError(
-                "Unexpected Vertebral Column target values: "
-                f"{unknown_values}"
-            )
-
-        y = mapped
+        return y != "Normal"
 
     y = pd.Series(y).replace(MISSING_MARKERS, np.nan)
 
