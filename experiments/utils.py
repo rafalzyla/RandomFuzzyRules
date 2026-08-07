@@ -698,16 +698,17 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
 
                         fit_start = time.perf_counter()
                         estimator.fit(X_train, y_train)
-                        fit_time = time.perf_counter() - fit_start
+                        fit_wall_time = time.perf_counter() - fit_start
+
+                        fit_time = getattr(estimator, "_benchmark_fit_time_", fit_wall_time)
 
                         predict_start = time.perf_counter()
                         y_pred = estimator.predict(X_test)
-                        predict_time = time.perf_counter() - predict_start
+                        predict_wall_time = time.perf_counter() - predict_start
 
-                        y_score = get_positive_scores(
-                            estimator,
-                            X_test,
-                        )
+                        predict_time = getattr(estimator, "_benchmark_predict_time_", predict_wall_time)
+
+                        y_score = get_positive_scores(estimator, X_test)
 
                         record = {
                             "dataset_id": dataset_id,
@@ -755,6 +756,10 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
                             "error_message": str(error),
                             "traceback": traceback.format_exc(),
                         }, errors_file)
+
+                    finally:
+                        if hasattr(estimator, "close"):
+                            estimator.close()
 
         except Exception as error:
             print(f"Dataset ERROR: {error}")
