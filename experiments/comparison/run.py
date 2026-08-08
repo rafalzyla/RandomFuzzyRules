@@ -36,11 +36,6 @@ from experiments.gpr_fast_bridge import GPRFastSubprocessClassifier
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 
-OUTPUT_DIR = Path("results") / "comparison"
-RESULTS_FILE = OUTPUT_DIR / "fold_results.csv"
-ERRORS_FILE = OUTPUT_DIR / "errors.csv"
-DATASET_MEANS_FILE = OUTPUT_DIR / "dataset_mean_results.csv"
-
 COMPARISON_DATASETS = {
     2: "Adult",
     22: "Chess King-Rook vs. King-Pawn",
@@ -228,7 +223,7 @@ def warm_up_estimators():
     print("Estimator warm-up completed.")
 
 
-def draw_pairwise_accuracy(dataset_means):
+def draw_pairwise_accuracy(dataset_means, OUTPUT_DIR):
     """Compare RFR and GPR dataset-level mean Accuracy values."""
     matrix = utils.metric_matrix(
         dataset_results=dataset_means,
@@ -255,7 +250,7 @@ def draw_pairwise_accuracy(dataset_means):
     return matrix
 
 
-def generate_outputs():
+def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
     """Aggregate complete folds and generate all comparison figures."""
     dataset_means = utils.load_complete_dataset_means(
         results_file=RESULTS_FILE,
@@ -274,7 +269,7 @@ def generate_outputs():
         alpha=ALPHA,
     )
 
-    draw_pairwise_accuracy(dataset_means)
+    draw_pairwise_accuracy(dataset_means, OUTPUT_DIR)
 
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,
@@ -301,12 +296,29 @@ def parse_arguments():
         action="store_true",
         help="Regenerate summaries and figures without fitting estimators.",
     )
+    parser.add_argument(
+        "--results-root",
+        type=Path,
+        default=Path("results"),
+        help=(
+            "Root directory for experiment outputs. "
+            "Default: results."
+        ),
+    )
     return parser.parse_args()
 
 
 def main():
     arguments = parse_arguments()
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    paths = utils.make_output_paths(arguments.results_root, experiment_directory="comparison")
+
+    OUTPUT_ROOT = paths["output_dir"]
+    RESULTS_FILE = paths["results_file"]
+    ERRORS_FILE = paths["errors_file"]
+    DATASET_MEANS_FILE = paths["dataset_means_file"]
+    
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
     if not arguments.plots_only:
         if not arguments.skip_warmup:
@@ -319,7 +331,7 @@ def main():
             errors_file=ERRORS_FILE,
         )
 
-    generate_outputs()
+    generate_outputs(OUTPUT_ROOT, RESULTS_FILE, DATASET_MEANS_FILE)
 
 
 if __name__ == "__main__":

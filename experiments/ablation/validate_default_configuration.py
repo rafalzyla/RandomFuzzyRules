@@ -32,10 +32,6 @@ from experiments.ablation.config import BASELINE_DEFAULTS, UCI_DATASETS
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 
-OUTPUT_DIR = Path("results") / "ablation" / "default_configuration_validation"
-RESULTS_FILE = OUTPUT_DIR / "fold_results.csv"
-ERRORS_FILE = OUTPUT_DIR / "errors.csv"
-
 BASELINE_NAME = "RFR_BaselineDefaults"
 SELECTED_NAME = "RFR_SelectedDefaults"
 ESTIMATOR_ORDER = [BASELINE_NAME, SELECTED_NAME]
@@ -111,7 +107,7 @@ def warm_up_numba():
     print("Numba warm-up completed.")
 
 
-def draw_pairwise_accuracy(dataset_means):
+def draw_pairwise_accuracy(dataset_means, OUTPUT_DIR):
     """Create a paired Accuracy scatter for baseline and selected defaults."""
     matrix = utils.metric_matrix(
         dataset_results=dataset_means,
@@ -137,7 +133,7 @@ def draw_pairwise_accuracy(dataset_means):
     return matrix
 
 
-def generate_outputs():
+def generate_outputs(OUTPUT_DIR, RESULTS_FILE):
     dataset_means = (
         utils.load_complete_dataset_means(
             results_file=RESULTS_FILE,
@@ -147,7 +143,7 @@ def generate_outputs():
     )
     dataset_means.to_csv(OUTPUT_DIR / "dataset_mean_results.csv", index=False)
 
-    draw_pairwise_accuracy(dataset_means)
+    draw_pairwise_accuracy(dataset_means, OUTPUT_DIR)
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,
         estimator_order=ESTIMATOR_ORDER,
@@ -172,12 +168,31 @@ def parse_arguments():
         action="store_true",
         help="Regenerate summaries and plots without fitting estimators.",
     )
+    parser.add_argument(
+        "--results-root",
+        type=Path,
+        default=Path("results"),
+        help=(
+            "Root directory for experiment outputs. "
+            "Default: results."
+        ),
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_arguments()
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    paths = utils.make_output_paths(
+        results_root=args.results_root,
+        experiment_directory=Path("ablation") / "default_configuration_validation"
+    )
+    
+    OUTPUT_ROOT = paths["output_dir"]
+    RESULTS_FILE = paths["results_file"]
+    ERRORS_FILE = paths["errors_file"]
+    
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
     if not args.plots_only:
         if not args.skip_warmup:
@@ -190,7 +205,7 @@ def main():
             errors_file=ERRORS_FILE,
         )
 
-    generate_outputs()
+    generate_outputs(OUTPUT_ROOT, RESULTS_FILE)
 
 
 if __name__ == "__main__":

@@ -535,6 +535,18 @@ def append_error(error_record, errors_file):
     error_df.to_csv(errors_file, index=False)
 
 
+def make_output_paths(results_root, experiment_directory):
+    """Create standard output paths for one experiment."""
+    output_dir = Path(results_root).expanduser().resolve() / Path(experiment_directory)
+
+    return {
+        "output_dir": output_dir,
+        "results_file": output_dir / "fold_results.csv",
+        "errors_file": output_dir / "errors.csv",
+        "dataset_means_file": output_dir / "dataset_mean_results.csv"
+    }
+
+
 def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file):
 
     results_file = Path(results_file)

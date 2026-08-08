@@ -27,8 +27,6 @@ from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 ALPHA = 0.05
 
-OUTPUT_ROOT = Path("results") / "ablation"
-
 # ---------------------------------------------------------------------------
 # Configuration and naming helpers
 # ---------------------------------------------------------------------------
@@ -65,9 +63,15 @@ def _estimator_name(study_name: str, value: Any) -> str:
         )
     return f"RandomFuzzyRules__{study_name}__{_safe_name(value)}"
 
-def _study_paths(study_name: str) -> tuple[Path, Path, Path]:
-    study_dir = OUTPUT_ROOT / study_name
-    study_dir.mkdir(parents=True, exist_ok=True)
+def _study_paths(output_root: Path, study_name: str) -> tuple[Path, Path, Path]:
+    """Return output paths for one ablation study."""
+    if study_name not in ABLATION_CONFIGS:
+        raise ValueError(f"Unknown ablation study: {study_name!r}")
+
+    study_dir = output_root / study_name
+
+    study_dir.mkdir(parents=True,exist_ok=True,)
+
     return (
         study_dir,
         study_dir / "fold_results.csv",
@@ -112,11 +116,11 @@ def make_ablation_estimators(study_name: str) -> Callable:
     return factory
 
 
-def run_ablation_study(study_name: str) -> None:
+def run_ablation_study(OUTPUT_ROOT: Path, study_name: str) -> None:
     if study_name not in ABLATION_CONFIGS:
         raise ValueError(f"Unknown ablation study: {study_name!r}")
 
-    study_dir, results_file, errors_file = _study_paths(study_name)
+    study_dir, results_file, errors_file = _study_paths(OUTPUT_ROOT, study_name)
     estimator_factory = make_ablation_estimators(study_name)
 
     print("\n" + "=" * 79)
@@ -145,8 +149,8 @@ def _display_labels(study_name: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # Study execution
 # ---------------------------------------------------------------------------
-def generate_study_outputs(study_name: str) -> None:
-    study_dir, results_file, _ = _study_paths(study_name)
+def generate_study_outputs(OUTPUT_ROOT: Path, study_name: str) -> None:
+    study_dir, results_file, _ = _study_paths(OUTPUT_ROOT, study_name)
     estimator_order = [
         _estimator_name(study_name, value)
         for value in ABLATION_CONFIGS[study_name]
@@ -200,6 +204,23 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Do not run the one-time Numba warm-up.",
     )
+    parser.add_argument(
+        "--plots-only",
+        action="store_true",
+        help=(
+            "Regenerate plots from existing ablation "
+            "results without fitting estimators."
+        ),
+    )
+    parser.add_argument(
+        "--results-root",
+        type=Path,
+        default=Path("results"),
+        help=(
+            "Root directory for experiment outputs. "
+            "Default: results."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -234,7 +255,6 @@ def warm_up_numba():
     print("Numba warm-up completed.")
 
 
-
 def main() -> None:
     arguments = parse_arguments()
 
@@ -244,14 +264,22 @@ def main() -> None:
         else [arguments.study]
     )
 
-    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
+    output_root = arguments.results_root.expanduser().resolve() / "ablation"
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    if arguments.plots_only:
+        for study_name in studies:
+            generate_study_outputs(output_root, study_name)
+
+        return
 
     if not arguments.skip_warmup:
         warm_up_numba()
 
     for study_name in studies:
-        run_ablation_study(study_name)
-        generate_study_outputs(study_name)
+        run_ablation_study(output_root, study_name)
+
+        generate_study_outputs(output_root, study_name)
 
 
 if __name__ == "__main__":

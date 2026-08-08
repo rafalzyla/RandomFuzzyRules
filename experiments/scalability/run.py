@@ -58,10 +58,6 @@ from experiments.gpr_fast_bridge import GPRFastSubprocessClassifier
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 
-OUTPUT_ROOT = Path("results") / "scalability"
-RESULTS_FILE = OUTPUT_ROOT / "timings.csv"
-ERRORS_FILE = OUTPUT_ROOT / "errors.csv"
-
 N_REPEATS = 5
 BASE_N_SAMPLES = 1_000
 BASE_N_NUMERICAL = 60
@@ -266,7 +262,7 @@ def make_estimator_factories(
 # ---------------------------------------------------------------------------
 # Persistence and timing
 # ---------------------------------------------------------------------------
-def _load_results() -> pd.DataFrame:
+def _load_results(RESULTS_FILE) -> pd.DataFrame:
     if RESULTS_FILE.exists():
         return pd.read_csv(RESULTS_FILE)
     return pd.DataFrame(columns=RESULT_COLUMNS)
@@ -311,8 +307,15 @@ def _time_one_estimator(
         gc.collect()
 
 
-def _run_grid(study: str, values: np.ndarray, n_repeats: int, max_data_gb: float | None,) -> None:
-    results = _load_results()
+def _run_grid(
+    RESULTS_FILE: Path, 
+    ERRORS_FILE: Path, 
+    study: str, 
+    values: np.ndarray, 
+    n_repeats: int, 
+    max_data_gb: float | None,
+) -> None:
+    results = _load_results(RESULTS_FILE)
     completed = _completed_keys(results)
 
     for value in values:
@@ -486,7 +489,7 @@ def _format_seconds(seconds, _position=None):
     return " ".join(parts) if parts else "0 ms"
 
 
-def _save_plot(results: pd.DataFrame, study: str) -> None:
+def _save_plot(results: pd.DataFrame, study: str, OUTPUT_ROOT: Path) -> None:
     subset = results[(results["study"] == study) & (results["status"] == "ok")].copy()
     if subset.empty:
         print(f"No successful results available for plot: {study}")
@@ -533,12 +536,12 @@ def _save_plot(results: pd.DataFrame, study: str) -> None:
     plt.close(fig)
 
 
-def generate_plots() -> None:
+def generate_plots(RESULTS_FILE: Path, OUTPUT_ROOT: Path) -> None:
     if not RESULTS_FILE.exists():
         raise FileNotFoundError(f"Results file was not found: {RESULTS_FILE}")
     results = pd.read_csv(RESULTS_FILE)
     for study in ("samples", "features", "candidates"):
-        _save_plot(results, study)
+        _save_plot(results, study, OUTPUT_ROOT)
 
 
 # ---------------------------------------------------------------------------
@@ -577,6 +580,15 @@ def parse_arguments():
             "Grid points exceeding the limit are skipped."
         ),
     )
+    parser.add_argument(
+        "--results-root",
+        type=Path,
+        default=Path("results"),
+        help=(
+            "Root directory for experiment outputs. "
+            "Default: results."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -587,11 +599,17 @@ def main() -> None:
     if args.max_data_gb is not None and args.max_data_gb <= 0:
         raise ValueError("--max-data-gb must be positive.")
 
+    paths = utils.make_output_paths(args.results_root, experiment_directory="scalability")
+
+    OUTPUT_ROOT = paths["output_dir"]
+    RESULTS_FILE = paths["results_file"]
+    ERRORS_FILE = paths["errors_file"]
+
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
     numba.set_num_threads(1)
 
     if args.plots_only:
-        generate_plots()
+        generate_plots(RESULTS_FILE, OUTPUT_ROOT)
         return
 
     if not args.skip_warmup:
@@ -610,12 +628,14 @@ def main() -> None:
         else:
             values = CANDIDATE_VALUES
         _run_grid(
+            RESULTS_FILE=RESULTS_FILE,
+            ERRORS_FILE=ERRORS_FILE,
             study=study,
             values=values,
             n_repeats=args.n_repeats,
             max_data_gb=args.max_data_gb,
         )
-        generate_plots()
+        generate_plots(RESULTS_FILE, OUTPUT_ROOT)
 
 
 if __name__ == "__main__":
