@@ -86,13 +86,18 @@ EOF
 on_exit() {
     local exit_code=$?
     trap - EXIT
-    if [[ -n "$UV_BIN" && -d "$REPO_ROOT/environments/main" ]]; then
+
+    local main_python
+    main_python="$(python_path_for_project environments/main)"
+
+    if [[ -n "$UV_BIN" && -x "$main_python" ]]; then
         if [[ $exit_code -eq 0 ]]; then
             write_summary "success" 0
         else
             write_summary "failed" "$exit_code"
         fi
     fi
+
     exit "$exit_code"
 }
 trap on_exit EXIT
@@ -126,17 +131,49 @@ parse_arguments() {
     [[ ! ( "$MODE" == "clean" && "$PLOTS_ONLY" -eq 1 ) ]] || fail "--clean and --plots-only cannot be used together."
 }
 
+update_process_path() {
+    local candidate_dir
+
+    for candidate_dir in \
+        "${XDG_BIN_HOME:-$HOME/.local/bin}" \
+        "$HOME/.local/bin" \
+        "$HOME/.cargo/bin"
+    do
+        [[ -d "$candidate_dir" ]] || continue
+
+        case ":$PATH:" in
+            *":$candidate_dir:"*)
+                ;;
+            *)
+                PATH="$candidate_dir:$PATH"
+                ;;
+        esac
+    done
+
+    export PATH
+}
+
 find_uv() {
+    update_process_path
+
     if command -v uv >/dev/null 2>&1; then
         UV_BIN="$(command -v uv)"
         return 0
     fi
-    for candidate in "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"; do
+
+    local candidate
+
+    for candidate in \
+        "${XDG_BIN_HOME:-$HOME/.local/bin}/uv" \
+        "$HOME/.local/bin/uv" \
+        "$HOME/.cargo/bin/uv"
+    do
         if [[ -x "$candidate" ]]; then
             UV_BIN="$candidate"
             return 0
         fi
     done
+
     return 1
 }
 
@@ -158,7 +195,17 @@ For example, on Ubuntu:
 EOF
         exit 1
     fi
-    find_uv || fail "uv installation completed, but the uv executable could not be found. Open a new shell and retry."
+
+    # The installer may update shell profiles, but those changes do not affect
+    # the currently running Bash process. Add known user binary directories
+    # to the current process PATH explicitly.
+    update_process_path
+
+    if ! find_uv; then
+        fail "uv installation completed, but the uv executable could not be found in the expected user binary directories."
+    fi
+
+    log "uv installation completed. Executable: $UV_BIN"
 }
 
 uv_version() {
@@ -192,9 +239,9 @@ write_environment_manifest() {
     if [[ -r /proc/meminfo ]]; then
         memory_bytes="$(( $(awk '/MemTotal:/ {print $2}' /proc/meminfo) * 1024 ))"
     fi
-    detected_uv="$($UV_BIN --version | tr -d '\r')"
-    main_python="$($UV_BIN run --project "$REPO_ROOT/environments/main" --locked python --version 2>&1 | tr -d '\r')"
-    gpr_python="$($UV_BIN run --project "$REPO_ROOT/environments/gpr" --locked python --version 2>&1 | tr -d '\r')"
+    detected_uv="$("$UV_BIN" --version | tr -d '\r')"
+    main_python="$("$UV_BIN" run --project "$REPO_ROOT/environments/main" --locked python --version 2>&1 | tr -d '\r')"
+    gpr_python="$("$UV_BIN" run --project "$REPO_ROOT/environments/gpr" --locked python --version 2>&1 | tr -d '\r')"
 
     cat > "$MANIFEST_FILE" <<EOF
 {
@@ -285,15 +332,17 @@ run_stage() {
 }
 
 main() {
-    parse_arguments "$@"
     mkdir -p "$LOG_DIR"
     touch "$LOG_FILE"
+    parse_arguments "$@"
     cd "$REPO_ROOT"
 
     if [[ "$MODE_EXPLICIT" -eq 0 ]]; then
         log "Neither --clean nor --resume was specified. Resume mode is used by default."
         log "Only files under $RESULTS_ROOT are reused. The reference results under $REPO_ROOT/results are not modified."
     fi
+
+    update_process_path
 
     if ! find_uv; then
         install_uv

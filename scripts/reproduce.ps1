@@ -80,8 +80,43 @@ function Invoke-LoggedCommand {
     }
 }
 
+function Update-ProcessPath {
+    # The current PowerShell process may have been started before uv updated
+    # the user PATH. Merge the current, user-level, and machine-level PATH
+    # values without modifying persistent system settings.
+
+    $candidatePaths = @(
+        $env:Path
+        [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::User)
+        [System.Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine)
+        (Join-Path $HOME ".local\bin")
+        (Join-Path $HOME ".cargo\bin")
+    )
+
+    $uniquePaths = @(
+        $candidatePaths |
+            Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_)
+            } |
+            ForEach-Object {
+                $_ -split [System.IO.Path]::PathSeparator
+            } |
+            Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_)
+            } |
+            ForEach-Object {
+                $_.Trim()
+            } |
+            Select-Object -Unique
+    )
+
+    $env:Path = $uniquePaths -join [System.IO.Path]::PathSeparator
+}
+
 function Find-Uv {
-    $command = Get-Command uv -ErrorAction SilentlyContinue
+    Update-ProcessPath
+
+    $command = Get-Command uv -CommandType Application -ErrorAction SilentlyContinue
     if ($null -ne $command) {
         return $command.Source
     }
@@ -102,10 +137,20 @@ function Install-Uv {
     Write-Log "uv was not found. Installing recommended uv $UvRecommendedVersion with the official installer."
     $installer = Invoke-RestMethod -Uri $url
     Invoke-Expression $installer
+
+    # The installer may modify the persistent user PATH, but the current
+    # process does not receive that modification automatically.
+    Update-ProcessPath
+    
     $script:UvCommand = Find-Uv
     if ($null -eq $script:UvCommand) {
         throw "uv installation completed, but uv.exe could not be found. Open a new PowerShell session and retry."
     }
+
+    Write-Log (
+        "uv installation completed. Executable: " +
+        $script:UvCommand
+    )
 }
 
 function Get-UvVersion {
@@ -285,6 +330,8 @@ try {
         Write-Log "Neither --clean nor --resume was specified. Resume mode is used by default."
         Write-Log "Only files under $ResultsRoot are reused. The reference results under $(Join-Path $RepoRoot 'results') are not modified."
     }
+
+    Update-ProcessPath
 
     $UvCommand = Find-Uv
     if ($null -eq $UvCommand) { Install-Uv }
