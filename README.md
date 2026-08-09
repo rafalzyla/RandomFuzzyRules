@@ -215,3 +215,28 @@ Check the reported `uv` version. The recommended version is `0.11.29`. The scrip
 ### An experiment was interrupted
 
 Run the same experiment again with `--resume`, or omit both mode flags because resume is the default. Existing successful dataset, fold, and estimator combinations are skipped where supported by the Python modules.
+
+## Third-party and derived software
+
+The repository includes `packages/gpr-fast`, a modified and optimized
+implementation derived from the original GPR project: [gpr-algorithm](https://github.com/czmilanna/gpr-algorithm).
+
+The original project is licensed under the MIT License. Its copyright
+notice and license terms are preserved in:
+
+`packages/gpr-fast/LICENSE`
+
+See `packages/gpr-fast/README.md` for the original repository reference
+and a summary of the modifications.
+
+## Use of artificial intelligence
+
+GPT-5.6 was used as an AI-assisted development tool during the preparation of
+this repository. Its assistance included the generation of initial code drafts,
+code review, refactoring suggestions, documentation drafting, experimental
+workflow design, and troubleshooting of the reproducibility scripts.
+
+All AI-generated code and suggestions were reviewed, analyzed, adapted where
+necessary, and tested by the authors. The authors remain responsible for the
+final source code, experimental methodology, reported results, and scientific
+conclusions.

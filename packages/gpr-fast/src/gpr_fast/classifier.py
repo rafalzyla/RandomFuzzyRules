@@ -1,4 +1,8 @@
-### Implementation is based on: https://github.com/ElsevierSoftwareX/SOFTX-D-22-00195/blob/main/gpr_algorithm/algorithm.py
+# Derived from gpr-algorithm.
+# Original copyright (c) 2022 Anna Czmil.
+# Modified by Rafał Żyła, 2026.
+# Licensed under the MIT License. See the LICENSE file 
+# in the packages/gpr-fast directory.
 
 import operator
 from collections import defaultdict, Counter
