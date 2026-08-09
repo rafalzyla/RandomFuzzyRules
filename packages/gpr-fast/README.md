@@ -1,6 +1,6 @@
 ## Origin and attribution
 
-This package is a modified and optimized implementation derived from
+This package is a modified and optimized implementation of GPR derived from
 [gpr-algorithm](https://github.com/czmilanna/gpr-algorithm).
 
 The original project was distributed under the MIT License. The original
