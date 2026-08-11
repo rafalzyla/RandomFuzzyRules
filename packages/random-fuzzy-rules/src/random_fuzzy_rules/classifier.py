@@ -176,6 +176,19 @@ class RuleStats:
     n_negative_covered: int
 
 
+@njit(parallel=False, cache=True, fastmath=False, inline="always", forceinline=True)
+def membership_function_low(x):
+    return max(-2 * x + 1, 0)
+
+@njit(parallel=False, cache=True, fastmath=False, inline="always", forceinline=True)
+def membership_function_high(x):
+    return max(2 * x - 1, 0)
+
+@njit(parallel=False, cache=True, fastmath=False, inline="always", forceinline=True)
+def membership_function_medium(x):
+    return 1 - np.abs(2 * x - 1)
+
+                   
 @njit(cache=True, fastmath=False, parallel=False)
 def _score_rules_fast(X, features, states, modifiers, lengths):
     """Calculate raw RuleSet scores for all observations.
@@ -185,9 +198,9 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
     
     For a transformed feature value ``x``, the supported memberships are:
     
-    - High: ``x ** modifier``,
-    - Low: ``(1 - x) ** modifier``,
-    - Medium: ``x * (1 - x)``,
+    - High: ``max(2 * x - 1, 0) ** modifier``,
+    - Low: ``max(-2 * x + 1, 0) ** modifier``,
+    - Medium: ``1 - |2 * x - 1|``,
     - Present: ``x``,
     - Absent: ``1 - x``.
     
@@ -238,12 +251,13 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
                 modifier = modifiers[r, k]
                 x = X[i, j]
                 if state == 0:
-                    value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
+                    high = membership_function_high(x)
+                    value = high if modifier == 1 else high * high if modifier == 2 else high * high * high
                 elif state == 1:
-                    low = 1.0 - x
+                    low = membership_function_low(x)
                     value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
                 elif state == 2:
-                    value = x * (1.0 - x)
+                    value = membership_function_medium(x)
                 elif state == 3:
                     value = x
                 else:
@@ -320,12 +334,13 @@ def _batch_accuracy(X, y, features, states, modifiers, lengths, n_rules, thresho
                     modifier = modifiers[c, r, k]
                     x = X[i, j]
                     if state == 0:
-                        value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
+                        high = membership_function_high(x)
+                        value = high if modifier == 1 else high * high if modifier == 2 else high * high * high
                     elif state == 1:
-                        low = 1.0 - x
+                        low = membership_function_low(x)
                         value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
                     elif state == 2:
-                        value = x * (1.0 - x)
+                        value = membership_function_medium(x)
                     elif state == 3:
                         value = x
                     else:
@@ -401,12 +416,13 @@ def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n
                     modifier = modifiers[c, r, k]
                     x = X[i, j]
                     if state == 0:
-                        value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
+                        high = membership_function_high(x)
+                        value = high if modifier == 1 else high * high if modifier == 2 else high * high * high
                     elif state == 1:
-                        low = 1.0 - x
+                        low = membership_function_low(x)
                         value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
                     elif state == 2:
-                        value = x * (1.0 - x)
+                        value = membership_function_medium(x)
                     elif state == 3:
                         value = x
                     else:
@@ -1088,9 +1104,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
     For continuous features, the supported fuzzy membership values are:
     
-    - High: ``x ** modifier``,
-    - Low: ``(1 - x) ** modifier``,
-    - Medium: ``x * (1 - x)``.
+    - High: ``max(2 * x - 1, 0) ** modifier``,
+    - Low: ``max(-2 * x + 1, 0) ** modifier``,
+    - Medium: ``1 - |2 * x - 1|``.
     
     For one-hot encoded categorical features:
     

@@ -46,11 +46,11 @@ DISPLAY_LABELS = {
 # is frozen for scalability and final classifier-comparison experiments.
 SELECTED_DEFAULTS = {
     "max_rules": 6,
-    "max_rules_len": 3,
+    "max_rules_len": 6,
     "max_literal_repetitions": 3,
     "threshold": 0.5,
-    "n_candidates": 10_000,
-    "max_sampling_attempts": 20_000,
+    "n_candidates": 50_000,
+    "max_sampling_attempts": 100_000,
     "sampling_type_number": 1,
     "sampling_type_length": 2,
     "preprocessed": True,
