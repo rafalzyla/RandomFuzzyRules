@@ -40,8 +40,9 @@ import numpy as np
 from numba import njit, prange
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, QuantileTransformer
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.pipeline import Pipeline
 
 try:
     import pandas as pd
@@ -1190,8 +1191,33 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
     preprocessed : bool, default=False
         If ``True``, ``X`` is interpreted as a dense, finite, already transformed
-        matrix with values in [0, 1]. If ``False``, numerical features are scaled
-        with ``MinMaxScaler`` and categorical features are one-hot encoded.
+        matrix with values in ``[0, 1]``. An optional quantile transformation may
+        still be fitted internally to columns identified by
+        ``continuous_features``.
+    
+        If ``False``, categorical features are one-hot encoded internally.
+        Numerical features are processed with ``MinMaxScaler`` when
+        ``quantile_transform=None`` or with the configured quantile-based
+        transformation otherwise.
+
+    quantile_transform : {None, "uniform", "normal"}, default=None
+        Optional quantile-based transformation applied only to continuous
+        features.
+    
+        If ``None``, continuous features are processed using the standard
+        min-max scaling employed by the classifier.
+    
+        If ``"uniform"``, each continuous feature is independently mapped to an
+        approximately uniform marginal distribution on ``[0, 1]``.
+    
+        If ``"normal"``, each continuous feature is first mapped to an
+        approximately normal marginal distribution and subsequently rescaled to
+        ``[0, 1]`` with ``MinMaxScaler(clip=True)``.
+    
+        One-hot-encoded categorical columns are never quantile-transformed. When
+        ``preprocessed=True``, the transformation is applied to columns identified
+        by ``continuous_features``. When ``preprocessed=False``, it is applied to
+        numerical columns identified by the internal preprocessing logic.
     
     random_state : int or None, default=None
         Seed controlling candidate generation. A fixed integer makes sampling
@@ -1221,7 +1247,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         Number of columns after preprocessing.
     
     preprocessor_ : ColumnTransformer or None
-        Fitted internal preprocessor. ``None`` when ``preprocessed=True``.
+        Fitted internal preprocessor used when ``preprocessed=False``. It contains
+        numerical scaling or quantile transformation and categorical one-hot
+        encoding. ``None`` when ``preprocessed=True``.
     
     transformed_feature_names_ : list of str
         Names of transformed input columns.
@@ -1275,6 +1303,17 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
     invalid_rate_ : float
         Fraction of all sampling attempts rejected as structurally invalid.
+
+    quantile_transformer_ : QuantileTransformer, Pipeline, or None
+        Fitted quantile transformation used for continuous columns when
+        ``preprocessed=True``. For ``quantile_transform="normal"``, the object is
+        a pipeline containing a quantile transformer followed by min-max scaling.
+        ``None`` when quantile transformation is disabled or is already included
+        in ``preprocessor_``.
+    
+    quantile_feature_indices_ : ndarray of int
+        Indices of transformed continuous columns to which
+        ``quantile_transformer_`` is applied in preprocessed mode.
     
     Notes
     -----
@@ -1283,6 +1322,14 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
     Candidate generation is stochastic, but candidate evaluation and tie-breaking
     are deterministic for a fixed generated candidate collection.
+
+    When quantile transformation is enabled, fuzzy states describe the relative
+    position of a value within the empirical marginal distribution of a feature
+    rather than its position on the original measurement scale.
+    
+    The quantile transformer is fitted exclusively on the data passed to
+    ``fit``. In cross-validation, it must therefore be fitted separately within
+    each training fold.
     
     The estimator follows the scikit-learn estimator interface and supports
     ``fit``, ``predict``, ``predict_proba``, and ``decision_function``.
@@ -1305,6 +1352,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         continuous_features: Optional[Union[str, Sequence[int], Sequence[bool], Sequence[str]]] = None,
         categorical_feature_groups: Optional[Sequence[Sequence[int]]] = None,
         preprocessed: bool = False,
+        quantile_transform=None,
         random_state: Optional[int] = None,
         verbose: int = 0,
     ):
@@ -1323,6 +1371,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         self.continuous_features = continuous_features
         self.categorical_feature_groups = categorical_feature_groups
         self.preprocessed = preprocessed
+        self.quantile_transform = quantile_transform
         self.random_state = random_state
         self.verbose = verbose
 
@@ -1401,23 +1450,50 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
 
         if self.preprocessed:
             Xt = np.ascontiguousarray(np.asarray(X, dtype=np.float64))
-            if Xt.ndim != 2 or not np.isfinite(Xt).all():
+            
+            if (Xt.ndim != 2 or not np.isfinite(Xt).all()):
                 raise ValueError("Preprocessed X must be a finite two-dimensional array.")
             if np.any(Xt < 0.0) or np.any(Xt > 1.0):
                 raise ValueError("Preprocessed X values must lie in [0, 1].")
-            self.preprocessor_ = None
+                
             self.n_transformed_features_ = Xt.shape[1]
-            names = list(self.feature_names) if self.feature_names is not None else [f"x{i+1}" for i in range(Xt.shape[1])]
+        
+            names = (list(self.feature_names) if self.feature_names is not None else [f"x{i + 1}" for i in range(Xt.shape[1])])
+        
             if len(names) != Xt.shape[1]:
-                raise ValueError("feature_names must match transformed columns")
+                raise ValueError("feature_names must match transformed columns.")
+        
             self.transformed_feature_names_ = names
+        
             self._configure_preprocessed_metadata(Xt.shape[1], names)
+        
+            self.quantile_feature_indices_ = np.asarray(sorted(self.continuous_feature_indices_), dtype=np.int64)
+        
+            if self.quantile_transform is not None and self.quantile_feature_indices_.size > 0:
+                self.quantile_transformer_ = self._make_quantile_transformer(n_samples=Xt.shape[0])
+        
+                Xt = np.array(Xt, dtype=np.float64, order="C", copy=True)
+        
+                Xt[:, self.quantile_feature_indices_] = (
+                    self.quantile_transformer_.fit_transform(Xt[:, self.quantile_feature_indices_])
+                )
+            else:
+                self.quantile_transformer_ = None
+        
+            self.preprocessor_ = None
+        
+            Xt = np.ascontiguousarray(Xt, dtype=np.float64)
         else:
             cat_cols, num_cols = self._resolve_categorical_and_numeric_columns(X)
             self.categorical_columns_, self.numeric_columns_ = cat_cols, num_cols
             transformers = []
             if num_cols:
-                transformers.append(("num", MinMaxScaler(clip=True), num_cols))
+                if self.quantile_transform is None:
+                    numerical_transformer = MinMaxScaler(clip=True)
+                else:
+                    numerical_transformer = self._make_quantile_transformer(n_samples=Xt.shape[0])
+            
+                transformers.append(("num", numerical_transformer, num_cols))
             if cat_cols:
                 transformers.append(("cat", self._make_one_hot_encoder(), cat_cols))
             if not transformers:
@@ -1426,6 +1502,16 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             Xt = np.ascontiguousarray(self.preprocessor_.fit_transform(X), dtype=np.float64)
             self.n_transformed_features_ = Xt.shape[1]
             self._build_internal_metadata()
+
+        if not np.isfinite(Xt).all():
+            raise ValueError("Transformed X contains NaN or infinite values.")
+        
+        tolerance = 1e-12
+        
+        if np.any(Xt < -tolerance) or np.any(Xt > 1.0 + tolerance):
+            raise ValueError("Transformed X values must lie in [0, 1].")
+        
+        Xt = np.ascontiguousarray(np.clip(Xt, 0.0, 1.0), dtype=np.float64)
 
         start = time.perf_counter()
         encoded_candidates = self._sample_unique_candidates_encoded()
@@ -1483,7 +1569,33 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         """
         check_is_fitted(self, ["rules_struct_", "_compiled_rule_arrays_"])
         self._check_X_no_return(X)
-        Xt = np.ascontiguousarray(np.asarray(X, dtype=np.float64) if self.preprocessed else self.preprocessor_.transform(X), dtype=np.float64)
+        if self.preprocessed:
+            Xt = np.array(X, dtype=np.float64, order="C", copy=True)
+        
+            if Xt.shape[1] != self.n_features_in_:
+                raise ValueError("X has a different number of features than the data passed to fit.")
+        
+            if np.any(Xt < 0.0) or np.any(Xt > 1.0):
+                raise ValueError("Preprocessed X values must lie in [0, 1].")
+        
+            if self.quantile_transformer_ is not None:
+                Xt[:, self.quantile_feature_indices_] = (
+                    self.quantile_transformer_.transform(Xt[:, self.quantile_feature_indices_])
+                )
+        
+        else:
+            Xt = np.ascontiguousarray(self.preprocessor_.transform(X), dtype=np.float64)
+        
+        if not np.isfinite(Xt).all():
+            raise ValueError("Transformed X contains NaN or infinite values.")
+        
+        tolerance = 1e-12
+        
+        if np.any(Xt < -tolerance) or np.any(Xt > 1.0 + tolerance):
+            raise ValueError("Transformed X values must lie in [0, 1].")
+        
+        np.clip(Xt, 0.0, 1.0, out=Xt)
+        Xt = np.ascontiguousarray(Xt, dtype=np.float64)
         return _score_rules_fast(Xt, *self._compiled_rule_arrays_)
 
     def predict_proba(self, X):
@@ -1534,6 +1646,57 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         """
         positive = self.predict_proba(X)[:, 1] >= self.threshold
         return np.where(positive, self.positive_class_, self.negative_class_)
+
+    def _make_quantile_transformer(self, n_samples):
+        """Create the configured continuous-feature quantile transformer.
+
+        Returns
+        -------
+        transformer : QuantileTransformer or Pipeline
+            Transformation applied to continuous input features.
+    
+            If ``quantile_transform="uniform"``, the returned object is a
+            ``QuantileTransformer`` mapping each feature independently to an
+            approximately uniform marginal distribution on ``[0, 1]``.
+    
+            If ``quantile_transform="normal"``, the returned object is a pipeline
+            containing a ``QuantileTransformer`` with a normal output distribution,
+            followed by ``MinMaxScaler(clip=True)``. The final scaling is required
+            because the fuzzy membership functions expect values in ``[0, 1]``.
+    
+        Notes
+        -----
+        The transformer is fitted only on continuous features from the training
+        data. One-hot-encoded categorical columns are passed through unchanged.
+    
+        Quantile transformation is performed independently for each feature and
+        reduces the influence of marginal outliers. The transformation is
+        nonlinear and can alter linear relationships between input features.
+    
+        The normal-output variant is not used directly by the fuzzy membership
+        functions. Its output is subsequently mapped to ``[0, 1]`` by a fitted
+        min-max scaler.
+        """
+        if self.quantile_transform is None:
+            return None
+    
+        n_quantiles = min(1000, n_samples) # 1000 - default value for QuantileTransformer
+    
+        quantile_transformer = QuantileTransformer(
+            n_quantiles=n_quantiles,
+            output_distribution=self.quantile_transform,
+            subsample=10_000,
+            random_state=self.random_state,
+            copy=True,
+        )
+    
+        if self.quantile_transform == "uniform":
+            return quantile_transformer
+    
+        return Pipeline([
+            ("quantile", quantile_transformer),
+            ("unit_interval", MinMaxScaler(clip=True)),
+        ])
 
     def _sample_unique_candidates_encoded(self):
         """Generate encoded valid unique candidate RuleSets.
@@ -1827,8 +1990,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         Rule coverage is determined by crisp thresholds derived from the fuzzy
         conditions:
         
-        - High: ``x >= 0.5 ** (1 / modifier)``;
-        - Low: ``x <= 1 - 0.5 ** (1 / modifier)``;
+        - High: ``x >= (1 + 0.5 ** (1 / modifier)) / 2``;
+        - Low: ``x <= (1 - 0.5 ** (1 / modifier)) / 2``;
         - Medium: ``0.25 <= x <= 0.75``;
         - Present: ``x >= 0.5``;
         - Absent: ``x < 0.5``.
@@ -1866,9 +2029,11 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             for condition in rule:
                 x = X[:, condition.feature]
                 if condition.state == "high":
-                    covered &= x >= 0.5 ** (1.0 / condition.modifier)
+                    threshold = (1.0 + 0.5 ** (1.0 / condition.modifier)) / 2.0
+                    covered &= x >= threshold
                 elif condition.state == "low":
-                    covered &= x <= 1.0 - 0.5 ** (1.0 / condition.modifier)
+                    threshold = (1.0 - 0.5 ** (1.0 / condition.modifier)) / 2.0
+                    covered &= x <= threshold
                 elif condition.state == "medium":
                     covered &= (x >= 0.25) & (x <= 0.75)
                 elif condition.state == "present":
@@ -1971,6 +2136,10 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         ValueError
             If preprocessed mode is enabled without a continuous-feature
             specification.
+
+        ValueError
+            If ``quantile_transform`` is not ``None``, ``"uniform"``,
+            or ``"normal"``.
         
         Notes
         -----
@@ -1995,6 +2164,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
         if self.preprocessed and self.continuous_features is None:
             raise ValueError("continuous_features is required when preprocessed=True; use 'all' when appropriate.")
+
+        if self.quantile_transform not in {None, "uniform", "normal"}:
+            raise ValueError("quantile_transform must be None, 'uniform', or 'normal'.")
 
     def _configure_preprocessed_metadata(self, n_features, names):
         """Validate and store metadata for externally preprocessed input.

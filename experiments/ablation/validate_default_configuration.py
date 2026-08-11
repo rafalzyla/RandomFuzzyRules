@@ -48,11 +48,12 @@ SELECTED_DEFAULTS = {
     "max_rules": 6,
     "max_rules_len": 6,
     "max_literal_repetitions": 3,
-    "threshold": 0.5,
+    "threshold": 0.4,
     "n_candidates": 50_000,
     "max_sampling_attempts": 100_000,
     "sampling_type_number": 1,
     "sampling_type_length": 2,
+    "quantile_transform": "uniform",
     "preprocessed": True,
 }
 
