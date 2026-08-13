@@ -1,85 +1,85 @@
 dataset_id,dataset_name,estimator,accuracy,fit_time,completed_folds
-14,Breast Cancer,RandomFuzzyRules__max_literal_repetitions__1,0.7344827586206897,0.0441831099975388,10
-14,Breast Cancer,RandomFuzzyRules__max_literal_repetitions__2,0.7381773399014778,0.04518277999886773,10
-14,Breast Cancer,RandomFuzzyRules__max_literal_repetitions__3,0.7346059113300493,0.04761591999849765,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_literal_repetitions__1,0.9441821946169773,0.06481812001147767,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_literal_repetitions__2,0.9441407867494824,0.06357802999846167,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_literal_repetitions__3,0.9470600414078675,0.06345560999761796,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_literal_repetitions__1,0.9403195488721805,0.05517673000576902,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_literal_repetitions__2,0.9192042606516291,0.05637491000234145,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_literal_repetitions__3,0.9104636591478696,0.054901549997157365,10
-27,Credit Approval,RandomFuzzyRules__max_literal_repetitions__1,0.8478260869565217,0.05130156000086568,10
-27,Credit Approval,RandomFuzzyRules__max_literal_repetitions__2,0.846376811594203,0.05174709999992042,10
-27,Credit Approval,RandomFuzzyRules__max_literal_repetitions__3,0.844927536231884,0.053162250001332664,10
-43,Haberman's Survival,RandomFuzzyRules__max_literal_repetitions__1,0.7350537634408603,0.310371039994061,10
-43,Haberman's Survival,RandomFuzzyRules__max_literal_repetitions__2,0.7383870967741936,0.1558716199971968,10
-43,Haberman's Survival,RandomFuzzyRules__max_literal_repetitions__3,0.7416129032258064,0.1383110100025078,10
-45,Heart Disease,RandomFuzzyRules__max_literal_repetitions__1,0.7455913978494624,0.04255843999562781,10
-45,Heart Disease,RandomFuzzyRules__max_literal_repetitions__2,0.7458064516129033,0.04429520000994667,10
-45,Heart Disease,RandomFuzzyRules__max_literal_repetitions__3,0.7725806451612903,0.04308416999992909,10
-46,Hepatitis,RandomFuzzyRules__max_literal_repetitions__1,0.8066666666666666,0.0443842300010146,10
-46,Hepatitis,RandomFuzzyRules__max_literal_repetitions__2,0.8004166666666667,0.04075487999652974,10
-46,Hepatitis,RandomFuzzyRules__max_literal_repetitions__3,0.7983333333333333,0.04093059000151692,10
-52,Ionosphere,RandomFuzzyRules__max_literal_repetitions__1,0.8432539682539681,0.0488427999982377,10
-52,Ionosphere,RandomFuzzyRules__max_literal_repetitions__2,0.7891269841269841,0.04560273000097364,10
-52,Ionosphere,RandomFuzzyRules__max_literal_repetitions__3,0.7947619047619048,0.04677800000063139,10
-74,Musk (Version 1),RandomFuzzyRules__max_literal_repetitions__1,0.6411347517730496,0.05887912999896795,10
-74,Musk (Version 1),RandomFuzzyRules__max_literal_repetitions__2,0.6535460992907802,0.05461991999763991,10
-74,Musk (Version 1),RandomFuzzyRules__max_literal_repetitions__3,0.6683510638297873,0.05701762999815396,10
-75,Musk (Version 2),RandomFuzzyRules__max_literal_repetitions__1,0.8654140801030028,0.4176007699978072,10
-75,Musk (Version 2),RandomFuzzyRules__max_literal_repetitions__2,0.8560180714581321,0.4357871399988653,10
-75,Musk (Version 2),RandomFuzzyRules__max_literal_repetitions__3,0.8537453441854049,0.42646782999800054,10
-94,Spambase,RandomFuzzyRules__max_literal_repetitions__1,0.6915839856644346,0.18997820000222415,10
-94,Spambase,RandomFuzzyRules__max_literal_repetitions__2,0.701802791662737,0.19027739000157448,10
-94,Spambase,RandomFuzzyRules__max_literal_repetitions__3,0.6989771762708668,0.19539828000124543,10
-95,SPECT Heart,RandomFuzzyRules__max_literal_repetitions__1,0.7491452991452991,0.03925430000235786,10
-95,SPECT Heart,RandomFuzzyRules__max_literal_repetitions__2,0.7491452991452991,0.03921749999281013,10
-95,SPECT Heart,RandomFuzzyRules__max_literal_repetitions__3,0.7491452991452991,0.041248679996351664,10
-105,Congressional Voting Records,RandomFuzzyRules__max_literal_repetitions__1,0.9563424947145878,0.04484581000288013,10
-105,Congressional Voting Records,RandomFuzzyRules__max_literal_repetitions__2,0.9563424947145878,0.04235190000035795,10
-105,Congressional Voting Records,RandomFuzzyRules__max_literal_repetitions__3,0.9563424947145878,0.04532649000466332,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_literal_repetitions__1,0.704,0.05761268000351259,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_literal_repetitions__2,0.6990000000000001,0.05935328000050499,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_literal_repetitions__3,0.726,0.06003179999534038,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_literal_repetitions__1,0.7492857142857143,0.04007362999545871,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_literal_repetitions__2,0.7161904761904763,0.03906928999349469,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_literal_repetitions__3,0.7064285714285714,0.04063999000063628,10
-161,Mammographic Mass,RandomFuzzyRules__max_literal_repetitions__1,0.7919029209621993,0.09901643999910444,10
-161,Mammographic Mass,RandomFuzzyRules__max_literal_repetitions__2,0.7887779209621992,0.0853771199996117,10
-161,Mammographic Mass,RandomFuzzyRules__max_literal_repetitions__3,0.7887671821305842,0.08714779999572782,10
-174,Parkinsons,RandomFuzzyRules__max_literal_repetitions__1,0.7981578947368421,0.04454639000177846,10
-174,Parkinsons,RandomFuzzyRules__max_literal_repetitions__2,0.8344736842105263,0.046052159997634526,10
-174,Parkinsons,RandomFuzzyRules__max_literal_repetitions__3,0.8452631578947368,0.043561549999867534,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_literal_repetitions__1,0.7673513513513514,0.11797947999730236,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_literal_repetitions__2,0.766018018018018,0.09433192999858869,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_literal_repetitions__3,0.7633153153153154,0.09074983000173228,10
-222,Bank Marketing,RandomFuzzyRules__max_literal_repetitions__1,0.892946391702352,1.86805104999803,10
-222,Bank Marketing,RandomFuzzyRules__max_literal_repetitions__2,0.8945832026101399,1.8739202500059036,10
-222,Bank Marketing,RandomFuzzyRules__max_literal_repetitions__3,0.8945832026101399,1.8903335799957859,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_literal_repetitions__1,0.6929865575686733,0.05927509999892204,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_literal_repetitions__2,0.7203682057276446,0.05712210999918164,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_literal_repetitions__3,0.7289304500292226,0.05924381000513672,10
-264,EEG Eye State,RandomFuzzyRules__max_literal_repetitions__1,0.5757009345794393,0.49628660999878776,10
-264,EEG Eye State,RandomFuzzyRules__max_literal_repetitions__2,0.5747663551401869,0.48002341999963394,10
-264,EEG Eye State,RandomFuzzyRules__max_literal_repetitions__3,0.5738317757009346,0.4916672900028061,10
-267,Banknote Authentication,RandomFuzzyRules__max_literal_repetitions__1,0.9744895800275046,0.18431460999709084,10
-267,Banknote Authentication,RandomFuzzyRules__max_literal_repetitions__2,0.8855760076166297,0.1452105900039896,10
-267,Banknote Authentication,RandomFuzzyRules__max_literal_repetitions__3,0.8761081138262986,0.12857161000138145,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_literal_repetitions__1,0.8553191489361701,0.04911180999770291,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_literal_repetitions__2,0.8468085106382979,0.04649653999949801,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_literal_repetitions__3,0.8404255319148936,0.04616655999852805,10
-327,Phishing Websites,RandomFuzzyRules__max_literal_repetitions__1,0.888920163976009,0.4110697900003288,10
-327,Phishing Websites,RandomFuzzyRules__max_literal_repetitions__2,0.8920852937085252,0.46064241000276523,10
-327,Phishing Websites,RandomFuzzyRules__max_literal_repetitions__3,0.8920852937085252,0.449570759999915,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_literal_repetitions__1,0.5985832083958021,0.08006002999609332,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_literal_repetitions__2,0.5925262368815593,0.08089126000413668,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_literal_repetitions__3,0.5882158920539731,0.08156655000348106,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_literal_repetitions__1,0.6446969696969698,0.05647414999548341,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_literal_repetitions__2,0.656060606060606,0.056275189999723765,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_literal_repetitions__3,0.7712121212121212,0.05434442000114355,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_literal_repetitions__1,0.8293103448275863,0.04952187999733719,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_literal_repetitions__2,0.8393103448275863,0.04854593999625646,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_literal_repetitions__3,0.8528735632183908,0.04847928000672251,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_literal_repetitions__1,0.8846153846153847,0.051286949994391706,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_literal_repetitions__2,0.8903846153846156,0.056771279999520585,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_literal_repetitions__3,0.8865384615384617,0.05553389000415333,10
+14,Breast Cancer,RandomFuzzyRules__max_literal_repetitions__1,0.7485221674876847,0.04501349999482041,10
+14,Breast Cancer,RandomFuzzyRules__max_literal_repetitions__2,0.7449507389162562,0.042695080001431004,10
+14,Breast Cancer,RandomFuzzyRules__max_literal_repetitions__3,0.7310344827586207,0.04200490999646713,10
+15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_literal_repetitions__1,0.9599378881987578,0.06233807000098747,10
+15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_literal_repetitions__2,0.9642443064182196,0.06160648999939435,10
+15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_literal_repetitions__3,0.9599585921325051,0.05830600000044793,10
+17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_literal_repetitions__1,0.9156954887218045,0.0479006299981847,10
+17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_literal_repetitions__2,0.9280388471177945,0.0467524400010006,10
+17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_literal_repetitions__3,0.9209586466165414,0.04873073000053406,10
+27,Credit Approval,RandomFuzzyRules__max_literal_repetitions__1,0.8478260869565217,0.05286565999995215,10
+27,Credit Approval,RandomFuzzyRules__max_literal_repetitions__2,0.8579710144927537,0.05189913000067459,10
+27,Credit Approval,RandomFuzzyRules__max_literal_repetitions__3,0.8478260869565217,0.05239780999982026,10
+43,Haberman's Survival,RandomFuzzyRules__max_literal_repetitions__1,0.731505376344086,0.4244679899988114,10
+43,Haberman's Survival,RandomFuzzyRules__max_literal_repetitions__2,0.7413978494623656,0.16457454999763282,10
+43,Haberman's Survival,RandomFuzzyRules__max_literal_repetitions__3,0.7153763440860215,0.12228772000089516,10
+45,Heart Disease,RandomFuzzyRules__max_literal_repetitions__1,0.7881720430107527,0.044116159998520685,10
+45,Heart Disease,RandomFuzzyRules__max_literal_repetitions__2,0.759247311827957,0.04211641000001687,10
+45,Heart Disease,RandomFuzzyRules__max_literal_repetitions__3,0.7194623655913979,0.04351364000031021,10
+46,Hepatitis,RandomFuzzyRules__max_literal_repetitions__1,0.78625,0.037905899999896034,10
+46,Hepatitis,RandomFuzzyRules__max_literal_repetitions__2,0.78,0.037291110002843145,10
+46,Hepatitis,RandomFuzzyRules__max_literal_repetitions__3,0.8,0.03628655999782489,10
+52,Ionosphere,RandomFuzzyRules__max_literal_repetitions__1,0.811984126984127,0.04493610000063195,10
+52,Ionosphere,RandomFuzzyRules__max_literal_repetitions__2,0.8091269841269841,0.0437202999994042,10
+52,Ionosphere,RandomFuzzyRules__max_literal_repetitions__3,0.8375396825396825,0.045221759998821595,10
+74,Musk (Version 1),RandomFuzzyRules__max_literal_repetitions__1,0.6261524822695035,0.05199023000022858,10
+74,Musk (Version 1),RandomFuzzyRules__max_literal_repetitions__2,0.674645390070922,0.050383969997346824,10
+74,Musk (Version 1),RandomFuzzyRules__max_literal_repetitions__3,0.708200354609929,0.050784099999873364,10
+75,Musk (Version 2),RandomFuzzyRules__max_literal_repetitions__1,0.8566257414815837,0.33209204000013415,10
+75,Musk (Version 2),RandomFuzzyRules__max_literal_repetitions__2,0.8645033797765208,0.3585138699971139,10
+75,Musk (Version 2),RandomFuzzyRules__max_literal_repetitions__3,0.8592019588908816,0.37087363000173357,10
+94,Spambase,RandomFuzzyRules__max_literal_repetitions__1,0.6318178817315854,0.17936695999960645,10
+94,Spambase,RandomFuzzyRules__max_literal_repetitions__2,0.6189946241629728,0.18283947000018083,10
+94,Spambase,RandomFuzzyRules__max_literal_repetitions__3,0.6224733565971895,0.17016979000036367,10
+95,SPECT Heart,RandomFuzzyRules__max_literal_repetitions__1,0.7491452991452991,0.04166085000324523,10
+95,SPECT Heart,RandomFuzzyRules__max_literal_repetitions__2,0.7491452991452991,0.04173351000063116,10
+95,SPECT Heart,RandomFuzzyRules__max_literal_repetitions__3,0.7491452991452991,0.04024064000259381,10
+105,Congressional Voting Records,RandomFuzzyRules__max_literal_repetitions__1,0.9563424947145878,0.04525666000263294,10
+105,Congressional Voting Records,RandomFuzzyRules__max_literal_repetitions__2,0.9563424947145878,0.04553895999997617,10
+105,Congressional Voting Records,RandomFuzzyRules__max_literal_repetitions__3,0.9563424947145878,0.04654634999751574,10
+144,Statlog (German Credit Data),RandomFuzzyRules__max_literal_repetitions__1,0.6900000000000001,0.07388711000094186,10
+144,Statlog (German Credit Data),RandomFuzzyRules__max_literal_repetitions__2,0.706,0.06532307999877952,10
+144,Statlog (German Credit Data),RandomFuzzyRules__max_literal_repetitions__3,0.712,0.06587809000193369,10
+151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_literal_repetitions__1,0.7638095238095237,0.03855069000128419,10
+151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_literal_repetitions__2,0.7114285714285714,0.04203846999880621,10
+151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_literal_repetitions__3,0.7259523809523809,0.04255221000348679,10
+161,Mammographic Mass,RandomFuzzyRules__max_literal_repetitions__1,0.7867053264604811,0.12591887000016866,10
+161,Mammographic Mass,RandomFuzzyRules__max_literal_repetitions__2,0.7721219931271477,0.09208279000013131,10
+161,Mammographic Mass,RandomFuzzyRules__max_literal_repetitions__3,0.7887779209621992,0.08384771000128236,10
+174,Parkinsons,RandomFuzzyRules__max_literal_repetitions__1,0.8397368421052631,0.0433208100002957,10
+174,Parkinsons,RandomFuzzyRules__max_literal_repetitions__2,0.8607894736842105,0.043046679999679295,10
+174,Parkinsons,RandomFuzzyRules__max_literal_repetitions__3,0.8610526315789473,0.04254255999985612,10
+176,Blood Transfusion Service Center,RandomFuzzyRules__max_literal_repetitions__1,0.774018018018018,0.16302924000192429,10
+176,Blood Transfusion Service Center,RandomFuzzyRules__max_literal_repetitions__2,0.7673333333333334,0.09339017000311284,10
+176,Blood Transfusion Service Center,RandomFuzzyRules__max_literal_repetitions__3,0.7673333333333333,0.08365730999939837,10
+222,Bank Marketing,RandomFuzzyRules__max_literal_repetitions__1,0.8928136874838645,1.7533102799992775,10
+222,Bank Marketing,RandomFuzzyRules__max_literal_repetitions__2,0.892946391702352,1.8392657500007772,10
+222,Bank Marketing,RandomFuzzyRules__max_literal_repetitions__3,0.892747325591781,1.7916955199994846,10
+225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_literal_repetitions__1,0.6913500876680304,0.05629847999807676,10
+225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_literal_repetitions__2,0.7031268264172998,0.053649040001619096,10
+225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_literal_repetitions__3,0.6877849210987727,0.05389330000034528,10
+264,EEG Eye State,RandomFuzzyRules__max_literal_repetitions__1,0.580173564753004,0.3633482500023092,10
+264,EEG Eye State,RandomFuzzyRules__max_literal_repetitions__2,0.5787716955941254,0.3822347500012256,10
+264,EEG Eye State,RandomFuzzyRules__max_literal_repetitions__3,0.5783711615487317,0.4025506700025289,10
+267,Banknote Authentication,RandomFuzzyRules__max_literal_repetitions__1,0.9409605416269967,0.16906787000189066,10
+267,Banknote Authentication,RandomFuzzyRules__max_literal_repetitions__2,0.9526235057653654,0.1063854700012598,10
+267,Banknote Authentication,RandomFuzzyRules__max_literal_repetitions__3,0.918380408335978,0.09995465999818402,10
+277,Thoracic Surgery Data,RandomFuzzyRules__max_literal_repetitions__1,0.8553191489361701,0.04658610000478798,10
+277,Thoracic Surgery Data,RandomFuzzyRules__max_literal_repetitions__2,0.848936170212766,0.04427594000153471,10
+277,Thoracic Surgery Data,RandomFuzzyRules__max_literal_repetitions__3,0.8531914893617021,0.0444183399988105,10
+327,Phishing Websites,RandomFuzzyRules__max_literal_repetitions__1,0.8473055239622627,0.3218656899989582,10
+327,Phishing Websites,RandomFuzzyRules__max_literal_repetitions__2,0.9062868107320824,0.34926492999948094,10
+327,Phishing Websites,RandomFuzzyRules__max_literal_repetitions__3,0.8920852937085252,0.3592801499995403,10
+329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_literal_repetitions__1,0.6229235382308846,0.06154257000162028,10
+329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_literal_repetitions__2,0.6255097451274363,0.06388086999795625,10
+329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_literal_repetitions__3,0.6150824587706147,0.06329276000324166,10
+451,Breast Cancer Coimbra,RandomFuzzyRules__max_literal_repetitions__1,0.7257575757575758,0.048251230000459985,10
+451,Breast Cancer Coimbra,RandomFuzzyRules__max_literal_repetitions__2,0.6128787878787879,0.04400654000055508,10
+451,Breast Cancer Coimbra,RandomFuzzyRules__max_literal_repetitions__3,0.6818181818181819,0.04369856999837788,10
+519,Heart Failure Clinical Records,RandomFuzzyRules__max_literal_repetitions__1,0.8057471264367816,0.046634010002890094,10
+519,Heart Failure Clinical Records,RandomFuzzyRules__max_literal_repetitions__2,0.8158620689655173,0.04525176999886749,10
+519,Heart Failure Clinical Records,RandomFuzzyRules__max_literal_repetitions__3,0.8293103448275863,0.04565392999938916,10
+529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_literal_repetitions__1,0.8634615384615385,0.04669454999675503,10
+529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_literal_repetitions__2,0.8903846153846156,0.04503251999849448,10
+529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_literal_repetitions__3,0.8846153846153847,0.04524048000021133,10

@@ -13,10 +13,10 @@ conditions. The activation of a rule is calculated as the product of its
 condition-membership values, while the score of a RuleSet is the sum of its
 rule activations.
 
-Continuous transformed features support the linguistic states ``high``,
-``low``, and ``medium``. High and low conditions may additionally use
-linguistic modifiers represented by powers from one to three. Categorical
-one-hot encoded features support the states ``present`` and ``absent``.
+Continuous transformed features support the linguistic states ``high``
+and ``low``. High and low conditions may additionally use linguistic modifiers 
+represented by powers from one to three. Categorical one-hot encoded features 
+support the states ``present`` and ``absent``.
 
 Candidate RuleSets are generated, canonicalized, validated, and deduplicated
 inside Numba-compiled functions. The number of rules and individual rule
@@ -49,7 +49,7 @@ try:
 except Exception:  # pragma: no cover
     pd = None
 
-_STATE_TO_CODE = {"high": 0, "low": 1, "medium": 2, "present": 3, "absent": 4}
+_STATE_TO_CODE = {"high": 0, "low": 1, "present": 2, "absent": 3}
 
 
 @dataclass(frozen=True, order=True)
@@ -57,7 +57,7 @@ class Condition:
     """Represent one fuzzy condition in a rule.
 
     A condition applies a linguistic state to one transformed input feature.
-    Continuous features support ``high``, ``low``, and ``medium`` states.
+    Continuous features support ``high`` and ``low``.
     Categorical one-hot encoded features support ``present`` and ``absent``
     states.
     
@@ -67,7 +67,7 @@ class Condition:
     - ``modifier=2``: Very High or Very Low,
     - ``modifier=3``: Extremely High or Extremely Low.
     
-    The ``medium``, ``present``, and ``absent`` states do not support modifiers
+    The ``present`` and ``absent`` states do not support modifiers
     other than one.
     
     Parameters
@@ -76,7 +76,7 @@ class Condition:
         Zero-based index of the transformed feature to which the condition
         applies.
     
-    state : {"high", "low", "medium", "present", "absent"}
+    state : {"high", "low", "present", "absent"}
         Linguistic state of the condition.
     
     modifier : int, default=1
@@ -116,14 +116,14 @@ class Condition:
             If ``modifier`` is outside the inclusive interval [1, 3].
         
         ValueError
-            If a modifier other than one is used with ``medium``, ``present``,
+            If a modifier other than one is used with ``present``
             or ``absent``.
         """
         if self.state not in _STATE_TO_CODE:
             raise ValueError(f"Unknown state: {self.state!r}")
         if not 1 <= self.modifier <= 3:
             raise ValueError("modifier must be in [1, 3]")
-        if self.state in {"medium", "present", "absent"} and self.modifier != 1:
+        if self.state in {"present", "absent"} and self.modifier != 1:
             raise ValueError(f"{self.state!r} only supports modifier=1")
 
 
@@ -176,19 +176,6 @@ class RuleStats:
     n_positive_covered: int
     n_negative_covered: int
 
-
-@njit(parallel=False, cache=True, fastmath=False, inline="always", forceinline=True)
-def membership_function_low(x):
-    return max(-2 * x + 1, 0)
-
-@njit(parallel=False, cache=True, fastmath=False, inline="always", forceinline=True)
-def membership_function_high(x):
-    return max(2 * x - 1, 0)
-
-@njit(parallel=False, cache=True, fastmath=False, inline="always", forceinline=True)
-def membership_function_medium(x):
-    return 1 - np.abs(2 * x - 1)
-
                    
 @njit(cache=True, fastmath=False, parallel=False)
 def _score_rules_fast(X, features, states, modifiers, lengths):
@@ -199,9 +186,8 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
     
     For a transformed feature value ``x``, the supported memberships are:
     
-    - High: ``max(2 * x - 1, 0) ** modifier``,
-    - Low: ``max(-2 * x + 1, 0) ** modifier``,
-    - Medium: ``1 - |2 * x - 1|``,
+    - High: ``x ** modifier``,
+    - Low: ``(1 - x) ** modifier``,
     - Present: ``x``,
     - Absent: ``1 - x``.
     
@@ -219,9 +205,8 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
     
         - 0: high,
         - 1: low,
-        - 2: medium,
-        - 3: present,
-        - 4: absent.
+        - 2: present,
+        - 3: absent.
     
     modifiers : ndarray of uint8, shape (n_rules, max_rule_length)
         Membership exponents. High and low conditions support values from one
@@ -252,14 +237,11 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
                 modifier = modifiers[r, k]
                 x = X[i, j]
                 if state == 0:
-                    high = membership_function_high(x)
-                    value = high if modifier == 1 else high * high if modifier == 2 else high * high * high
+                    value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
                 elif state == 1:
-                    low = membership_function_low(x)
+                    low = 1.0 - x
                     value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
                 elif state == 2:
-                    value = membership_function_medium(x)
-                elif state == 3:
                     value = x
                 else:
                     value = 1.0 - x
@@ -335,14 +317,11 @@ def _batch_accuracy(X, y, features, states, modifiers, lengths, n_rules, thresho
                     modifier = modifiers[c, r, k]
                     x = X[i, j]
                     if state == 0:
-                        high = membership_function_high(x)
-                        value = high if modifier == 1 else high * high if modifier == 2 else high * high * high
+                        value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
                     elif state == 1:
-                        low = membership_function_low(x)
+                        low = 1.0 - x
                         value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
                     elif state == 2:
-                        value = membership_function_medium(x)
-                    elif state == 3:
                         value = x
                     else:
                         value = 1.0 - x
@@ -417,14 +396,11 @@ def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n
                     modifier = modifiers[c, r, k]
                     x = X[i, j]
                     if state == 0:
-                        high = membership_function_high(x)
-                        value = high if modifier == 1 else high * high if modifier == 2 else high * high * high
+                        value = x if modifier == 1 else x * x if modifier == 2 else x * x * x
                     elif state == 1:
-                        low = membership_function_low(x)
+                        low = 1.0 - x
                         value = low if modifier == 1 else low * low if modifier == 2 else low * low * low
                     elif state == 2:
-                        value = membership_function_medium(x)
-                    elif state == 3:
                         value = x
                     else:
                         value = 1.0 - x
@@ -995,14 +971,11 @@ def _generate_unique_candidates_fast(
                 candidate_features[rule_index, literal_index] = feature
 
                 if continuous_mask[feature]:
-                    state = np.random.randint(0, 3)
-                    candidate_states[rule_index,literal_index] = state
-
-                    if state < 2:
-                        candidate_modifiers[rule_index, literal_index] = np.random.randint(1, max_modifier + 1)
+                    candidate_states[rule_index,literal_index] = np.random.randint(0, 2)
+                    candidate_modifiers[rule_index, literal_index] = np.random.randint(1, max_modifier + 1)
 
                 else:
-                    candidate_states[rule_index, literal_index] = np.random.randint(3, 5)
+                    candidate_states[rule_index, literal_index] = np.random.randint(2, 4)
 
         # ----------------------------------------------------------
         # Canonicalize and validate immediately.
@@ -1105,9 +1078,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
     For continuous features, the supported fuzzy membership values are:
     
-    - High: ``max(2 * x - 1, 0) ** modifier``,
-    - Low: ``max(-2 * x + 1, 0) ** modifier``,
-    - Medium: ``1 - |2 * x - 1|``.
+    - High: ``x ** modifier``,
+    - Low: ``(1 - x) ** modifier``.
     
     For one-hot encoded categorical features:
     
@@ -1930,9 +1902,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         
             - 0: high,
             - 1: low,
-            - 2: medium,
-            - 3: present,
-            - 4: absent.
+            - 2: present,
+            - 3: absent.
         
         Returns
         -------
@@ -1942,9 +1913,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         Raises
         ------
         IndexError
-            If ``code`` is outside the supported interval [0, 4].
+            If ``code`` is outside the supported interval [0, 3].
         """
-        return ("high", "low", "medium", "present", "absent")[code]
+        return ("high", "low", "present", "absent")[code]
 
     def _encode_single_ruleset(self, rules):
         """Encode one structured RuleSet into fixed-shape numerical arrays.
@@ -1990,9 +1961,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         Rule coverage is determined by crisp thresholds derived from the fuzzy
         conditions:
         
-        - High: ``x >= (1 + 0.5 ** (1 / modifier)) / 2``;
-        - Low: ``x <= (1 - 0.5 ** (1 / modifier)) / 2``;
-        - Medium: ``0.25 <= x <= 0.75``;
+        - High: ``x >= 0.5 ** (1 / modifier)``;
+        - Low: ``x <= 1 - 0.5 ** (1 / modifier)``;
         - Present: ``x >= 0.5``;
         - Absent: ``x < 0.5``.
         
@@ -2029,13 +1999,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             for condition in rule:
                 x = X[:, condition.feature]
                 if condition.state == "high":
-                    threshold = (1.0 + 0.5 ** (1.0 / condition.modifier)) / 2.0
-                    covered &= x >= threshold
+                    covered &= x >= 0.5 ** (1.0 / condition.modifier)
                 elif condition.state == "low":
-                    threshold = (1.0 - 0.5 ** (1.0 / condition.modifier)) / 2.0
-                    covered &= x <= threshold
-                elif condition.state == "medium":
-                    covered &= (x >= 0.25) & (x <= 0.75)
+                    covered &= x <= 1.0 - 0.5 ** (1.0 / condition.modifier)
                 elif condition.state == "present":
                     covered &= x >= 0.5
                 else:
@@ -2105,8 +2071,6 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         if condition.state in {"high", "low"}:
             prefix = {1: "", 2: "Very ", 3: "Extremely "}[condition.modifier]
             return f"{name} is {prefix}{condition.state.title()}"
-        if condition.state == "medium":
-            return f"{name} is Medium"
         category = meta["category"]
         return f"{name} is {category}" if condition.state == "present" else f"{name} is not {category}"
 
