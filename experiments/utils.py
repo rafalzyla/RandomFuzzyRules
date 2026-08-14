@@ -6,24 +6,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ucimlrepo import fetch_ucirepo
-
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, LabelEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import (
-    accuracy_score,
-    f1_score,
-    roc_auc_score,
-)
+from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
-from aeon.visualisation import plot_boxplot, plot_critical_difference
+from aeon.visualisation import plot_boxplot, plot_significance
+from data_foundry.collections import BEYOND_ARENA
 
 RANDOM_STATE = 42
-N_SPLITS = 10
 
 MISSING_MARKERS = [
     "?",
@@ -35,287 +28,63 @@ MISSING_MARKERS = [
     "",
 ]
 
-DROP_COLUMNS = {
-    # DARWIN: participant identifier.
-    732: {"ID",},
-}
 
-CATEGORICAL_COLUMNS = {
-    # Default of Credit Card Clients.
-    350: {
-        "X2",
-        "X3",
-        "X4",
-    },
-
-    # Online Shoppers Purchasing Intention.
-    468: {
-        "Month",
-        "OperatingSystems",
-        "Browser",
-        "Region",
-        "TrafficType",
-        "VisitorType",
-        "Weekend",
-    },
-}
+RESULT_COLUMNS = [
+    "dataset_name",
+    "repeat_id",
+    "fold_id",
+    "fold",
+    "n_expected_folds",
+    "estimator",
+    "n_train",
+    "n_test",
+    "n_original_features",
+    "n_transformed_features",
+    "accuracy",
+    "fit_time",
+    "predict_time",
+]
 
 
-def get_variable_type_map(dataset):
-    """Return a mapping: variable name -> UCI variable type."""
-    variables = dataset.variables
+def load_dataset(dataset_name):
+    """Download and clean one BeyondArena dataset."""
+    container = BEYOND_ARENA.get_dataset(name_or_uuid=dataset_name)
 
-    if variables is None or variables.empty:
-        return {}
+    splits = []
+    
+    for repeat_id, repeat_folds in container.experiment_metadata.splits.items():
+        for fold_id, indices in repeat_folds.items():
+            train_indices, test_indices = indices
+    
+            splits.append(
+                {
+                    "repeat_id": int(repeat_id),
+                    "fold_id": int(fold_id),
+                    "train_indices": np.asarray(train_indices, dtype=np.int32),
+                    "test_indices": np.asarray(test_indices, dtype=np.int32),
+                }
+            )
 
-    result = {}
+    X = container.dataset
+    y = X.pop(container.task_metadata.target_column_name)
+    
+    if pd.Series(y).isna().any():
+        raise ValueError(f"Dataset {dataset_name} contains missing target values.")
+        
+    n_classes = len(np.unique(y))
 
-    for _, row in variables.iterrows():
-        name = row.get("name")
-        role = str(row.get("role", "")).lower()
-        variable_type = str(row.get("type", ""))
+    if n_classes != 2:
+        raise ValueError(f"Dataset {dataset_name} has {n_classes} classes.")
 
-        if role == "feature" and name is not None:
-            result[str(name)] = variable_type
+    X = X[X.columns.drop_duplicates(keep="first")]
 
-    return result
+    # filter out datatypes diffrent than numbers/objects/categories, e.g. datetimes
+    numerical_columns = list(X.select_dtypes(include="number"))
+    categorical_columns = list(X.select_dtypes(include=["category", "object", "bool"]))
 
-
-def normalize_text_series(series):
-    """Normalize textual UCI values while preserving missing entries."""
-    if not (
-        pd.api.types.is_object_dtype(series)
-        or pd.api.types.is_string_dtype(series)
-        or isinstance(
-            series.dtype,
-            pd.CategoricalDtype,
-        )
-    ):
-        return series
-
-    normalized = series.astype("string").str.strip()
-
-    missing_values = {marker.lower() for marker in MISSING_MARKERS if marker}
-    missing_mask = normalized.str.lower().isin(missing_values)
-
-    normalized = normalized.mask(missing_mask, pd.NA)
-
-    # Return object dtype with ordinary np.nan values. This interacts more
-    # predictably with SimpleImputer and OneHotEncoder than pd.NA in a mixed
-    # object column.
-    normalized = normalized.astype("object").where(normalized.notna(), np.nan)
-
-    return normalized
-
-def resolve_columns(available_columns, requested_columns):
-    """Resolve configured column names case-insensitively."""
-    available_by_normalized_name = {
-        str(column).strip().casefold(): column
-        for column in available_columns
-    }
-
-    resolved = set()
-
-    for requested in requested_columns:
-        key = str(requested).strip().casefold()
-
-        if key in available_by_normalized_name:
-            resolved.add(available_by_normalized_name[key])
-
-    return resolved
-
-def clean_features(X, dataset, dataset_id):
-    """Clean feature values and infer numerical/categorical columns."""
-    X = X.copy()
-
-    # Normalize whitespace and textual missing-value markers before type
-    # inference. This is especially important for Adult and Chronic Kidney
-    # Disease.
-    for column in X.columns:
-        X[column] = normalize_text_series(X[column])
+    X = X[numerical_columns + categorical_columns] 
 
     X = X.replace(MISSING_MARKERS, np.nan)
-
-    requested_drop_columns = DROP_COLUMNS.get(dataset_id, set())
-
-    resolved_drop_columns = (
-        resolve_columns(
-            available_columns=X.columns,
-            requested_columns=requested_drop_columns,
-        )
-    )
-
-    if resolved_drop_columns:
-        X = X.drop(columns=list(resolved_drop_columns))
-
-    requested_categorical = CATEGORICAL_COLUMNS.get(dataset_id, set())
-
-    forced_categorical = (
-        resolve_columns(
-            available_columns=X.columns,
-            requested_columns=requested_categorical,
-        )
-    )
-
-    variable_types = get_variable_type_map(dataset)
-
-    categorical_columns = []
-    numerical_columns = []
-    columns_to_drop = []
-
-    for column in X.columns:
-        declared_type = variable_types.get(str(column), "").strip().lower()
-
-        if X[column].notna().sum() == 0:
-            columns_to_drop.append(column)
-            continue
-
-        if column in forced_categorical or declared_type in {"categorical", "binary"}:
-            X[column] = normalize_text_series(X[column]).astype("object")
-
-            categorical_columns.append(column)
-            continue
-
-        if declared_type in {"integer", "continuous", "real", "numeric"}:
-            converted = pd.to_numeric(X[column], errors="coerce").astype(float)
-            if converted.notna().sum() == 0:
-                columns_to_drop.append(column)
-                continue
-            
-            X[column] = converted
-            numerical_columns.append(column)
-            continue
-
-        converted = pd.to_numeric(X[column], errors="coerce",)
-
-        original_non_missing = X[column].notna().sum()
-
-        converted_non_missing = converted.notna().sum()
-
-        if original_non_missing == 0:
-            columns_to_drop.append(column)
-            continue
-
-        conversion_ratio = converted_non_missing / original_non_missing
-
-        if conversion_ratio >= 0.95:
-            X[column] = (converted.astype(float))
-            numerical_columns.append(column)
-        else:
-            X[column] = normalize_text_series(X[column]).astype("object")
-            categorical_columns.append(column)
-
-    if columns_to_drop:
-        X = X.drop(columns=columns_to_drop)
-
-        categorical_columns = [
-            column
-            for column in categorical_columns
-            if column not in columns_to_drop
-        ]
-
-        numerical_columns = [
-            column
-            for column in numerical_columns
-            if column not in columns_to_drop
-        ]
-
-    if not numerical_columns and not categorical_columns:
-        raise ValueError(f"Dataset {dataset_id} has no usable feature columns.")
-
-    return (
-        X,
-        numerical_columns,
-        categorical_columns,
-    )
-
-def prepare_target(dataset_id, y_frame):
-    """Convert a UCI target into a binary target"""
-    if y_frame is None or y_frame.empty:
-        raise ValueError("Dataset has no target column.")
-
-    if y_frame.shape[1] != 1:
-        raise ValueError(
-            f"Expected one target column for dataset "
-            f"{dataset_id}, found {y_frame.shape[1]}: "
-            f"{list(y_frame.columns)}"
-        )
-
-    y = y_frame.iloc[:, 0].copy()
-
-    y = normalize_text_series(y)
-
-    # Adult sometimes contains labels originating from separate train and
-    # test files, where test labels may have a trailing period.
-    if dataset_id == 2:
-        y = (
-            pd.Series(y)
-            .astype("string")
-            .str.strip()
-            .str.removesuffix(".")
-            .astype("object")
-        )
-
-        y = y.where(pd.Series(y).notna(), np.nan)
-
-    # UCI Heart Disease.
-    # 0 = no disease; values 1-4 = presence of disease.
-    if dataset_id == 45:
-        y_numeric = pd.to_numeric(y, errors="coerce")
-        y_binary = (y_numeric > 0).astype(float)
-        y_binary[y_numeric.isna()] = np.nan
-        return y_binary
-
-    # Vertebral Column officially defines both a three-class and a binary
-    # task. Disk Hernia and Spondylolisthesis are merged into Abnormal.
-    if dataset_id == 212:
-        return y != "Normal"
-
-    y = pd.Series(y).replace(MISSING_MARKERS, np.nan)
-
-    return y
-
-def load_uci_dataset(dataset_id):
-    """Download and clean one UCI dataset."""
-    dataset = fetch_ucirepo(id=dataset_id)
-
-    if dataset.data.features is None or dataset.data.features.empty:
-        raise ValueError(f"Dataset {dataset_id} has no feature matrix.")
-
-    if dataset.data.targets is None or dataset.data.targets.empty:
-        raise ValueError(f"Dataset {dataset_id} has no target matrix.")
-
-    X = dataset.data.features.copy()
-    y_raw = dataset.data.targets.copy()
-
-    y = prepare_target(dataset_id=dataset_id, y_frame=y_raw)
-
-    valid_target = pd.Series(y).notna().to_numpy()
-
-    X = X.loc[valid_target].reset_index(drop=True)
-
-    y = pd.Series(y).loc[valid_target].reset_index(drop=True)
-
-    X = X.T.drop_duplicates(keep="first").T
-
-    (
-        X,
-        numerical_columns,
-        categorical_columns,
-    ) = clean_features(
-        X=X,
-        dataset=dataset,
-        dataset_id=dataset_id,
-    )
-
-    # Normalize target labels once more after filtering. This ensures that
-    # labels differing only in whitespace are treated as one class.
-    y = normalize_text_series(y)
-
-    if pd.Series(y).isna().any():
-        raise RuntimeError(
-            f"Dataset {dataset_id} still contains missing target values after filtering."
-        )
 
     encoder = LabelEncoder()
     y_encoded = encoder.fit_transform(pd.Series(y).astype(str)).astype(np.int64)
@@ -323,24 +92,17 @@ def load_uci_dataset(dataset_id):
     class_counts = np.bincount(y_encoded)
     
     if len(class_counts) != 2:
-        raise ValueError(f"Dataset {dataset_id} produced {len(class_counts)} encoded classes.")
-    
-    if class_counts.min() < N_SPLITS:
-        raise ValueError(
-            f"Dataset {dataset_id} has only "
-            f"{class_counts.min()} observations in the "
-            f"smallest class, fewer than "
-            f"n_splits={N_SPLITS}."
-        )
+        raise ValueError(f"Dataset {dataset_name} produced {len(class_counts)} encoded classes.")
 
     return {
-        "dataset_id": dataset_id,
-        "dataset_name": dataset.metadata.name,
+        "dataset_name": dataset_name,
         "X": X,
         "y": y_encoded,
         "target_classes": list(encoder.classes_),
         "numerical_columns": numerical_columns,
         "categorical_columns": categorical_columns,
+        "n_expected_folds": len(splits),
+        "splits": splits,
     }
 
 
@@ -479,36 +241,6 @@ def make_preprocessor(numerical_columns, categorical_columns):
         sparse_threshold=0.0,
     )
 
-def get_positive_scores(estimator, X_test):
-    if hasattr(estimator, "predict_proba"):
-        return estimator.predict_proba(X_test)[:, 1]
-
-    if hasattr(estimator, "decision_function"):
-        return estimator.decision_function(X_test)
-
-    if hasattr(estimator, "predict"):
-        return estimator.predict(X_test)
-
-    raise AttributeError(
-        "Estimator has neither predict_proba, decision_function, nor predict."
-    )
-
-RESULT_COLUMNS = [
-    "dataset_id",
-    "dataset_name",
-    "fold",
-    "estimator",
-    "n_train",
-    "n_test",
-    "n_original_features",
-    "n_transformed_features",
-    "accuracy",
-    "f1",
-    "auroc",
-    "fit_time",
-    "predict_time",
-]
-
 
 def load_existing_results(results_file):
     results_file = Path(results_file)
@@ -547,7 +279,7 @@ def make_output_paths(results_root, experiment_directory):
     }
 
 
-def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file):
+def run_benchmark(datasets, make_estimators, results_file, errors_file):
 
     results_file = Path(results_file)
     errors_file = Path(errors_file)
@@ -566,24 +298,19 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
 
     completed = {
         (
-            int(row.dataset_id),
-            int(row.fold),
+            str(row.dataset_name),
+            int(row.repeat_id),
+            int(row.fold_id),
             str(row.estimator),
         )
         for row in results.itertuples()
     }
 
-    for dataset_position, (dataset_id, expected_name) in enumerate(
-        dataset_dictionary.items(),
-        start=1,
-    ):
-        print(
-            f"\n[{dataset_position}/{len(dataset_dictionary)}] "
-            f"Loading {dataset_id}: {expected_name}"
-        )
+    for dataset_position, dataset_name in enumerate(datasets, start=1):
+        print(f"\n[{dataset_position}/{len(datasets)}] Loading: {dataset_name}")
 
         try:
-            data = load_uci_dataset(dataset_id=dataset_id)
+            data = load_dataset(dataset_name=dataset_name)
 
             X = data["X"]
             y = np.asarray(data["y"], dtype=np.int64)
@@ -591,15 +318,7 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
             class_counts = np.bincount(y)
 
             if len(class_counts) != 2:
-                raise ValueError(
-                    f"Expected 2 classes, found {len(class_counts)}."
-                )
-
-            if class_counts.min() < N_SPLITS:
-                raise ValueError(
-                    f"The smallest class has only {class_counts.min()} "
-                    f"instances, fewer than n_splits={N_SPLITS}."
-                )
+                raise ValueError(f"Expected 2 classes, found {len(class_counts)}.")
 
             print(
                 f"Dataset: {data['dataset_name']}; "
@@ -613,21 +332,15 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
                 categorical_columns=data["categorical_columns"],
             )
 
-            cv = StratifiedKFold(
-                n_splits=N_SPLITS,
-                shuffle=True,
-                random_state=RANDOM_STATE,
-            )
-
-            for fold, (train_indices, test_indices) in enumerate(
-                cv.split(X, y),
-                start=1,
-            ):
-                X_train_raw = X.iloc[train_indices]
-                X_test_raw = X.iloc[test_indices]
+            for fold, split in enumerate(data["splits"], start=1):
+                repeat_id = split["repeat_id"]
+                fold_id = split["fold_id"]
                 
-                y_train = y[train_indices]
-                y_test = y[test_indices]
+                X_train_raw = X.iloc[split["train_indices"]]
+                X_test_raw = X.iloc[split["test_indices"]]
+                
+                y_train = y[split["train_indices"]]
+                y_test = y[split["test_indices"]]
                 
                 # Fit preprocessing only on the training part of the fold.
                 fold_preprocessor = clone(preprocessor)
@@ -689,23 +402,28 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
                 )
 
                 for estimator_name, estimator in estimators.items():
-                    key = (dataset_id, fold, estimator_name)
-
-                    if key in completed:
-                        print(
-                            f"  Fold {fold:02d} | {estimator_name}: "
-                            f"already completed"
-                        )
-                        continue
-
-                    print(
-                        f"  Fold {fold:02d} | "
-                        f"{estimator_name:22s}",
-                        end="",
-                        flush=True,
+                    key = (
+                        dataset_name,
+                        repeat_id,
+                        fold_id,
+                        estimator_name,
                     )
-
+                    
                     try:
+                        if key in completed:
+                            print(
+                                f"  Fold {fold:02d} | {estimator_name}: "
+                                f"already completed"
+                            )
+                            continue
+    
+                        print(
+                            f"  Fold {fold:02d} | "
+                            f"{estimator_name:22s}",
+                            end="",
+                            flush=True,
+                        )
+
                         gc.collect()
 
                         fit_start = time.perf_counter()
@@ -720,20 +438,18 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
 
                         predict_time = getattr(estimator, "_benchmark_predict_time_", predict_wall_time)
 
-                        y_score = get_positive_scores(estimator, X_test)
-
                         record = {
-                            "dataset_id": dataset_id,
                             "dataset_name": data["dataset_name"],
+                            "repeat_id": repeat_id,
+                            "fold_id": fold_id,
                             "fold": fold,
+                            "n_expected_folds": data["n_expected_folds"],
                             "estimator": estimator_name,
-                            "n_train": len(train_indices),
-                            "n_test": len(test_indices),
+                            "n_train": len(split["train_indices"]),
+                            "n_test": len(split["test_indices"]),
                             "n_original_features": X.shape[1],
                             "n_transformed_features": X_train.shape[1],
                             "accuracy": accuracy_score(y_test, y_pred),
-                            "f1": f1_score(y_test, y_pred, pos_label=1, zero_division=0),
-                            "auroc": roc_auc_score(y_test, y_score),
                             "fit_time": fit_time,
                             "predict_time": predict_time,
                         }
@@ -750,8 +466,6 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
 
                         print(
                             f" | acc={record['accuracy']:.3f}"
-                            f" | f1={record['f1']:.3f}"
-                            f" | auc={record['auroc']:.3f}"
                             f" | fit={fit_time:.3f}s"
                             f" | pred={predict_time:.6f}s"
                         )
@@ -760,9 +474,11 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
                         print(f" | ERROR: {error}")
 
                         append_error({
-                            "dataset_id": dataset_id,
-                            "dataset_name": expected_name,
+                            "dataset_name": data['dataset_name'],
+                            "repeat_id": repeat_id,
+                            "fold_id": fold_id,
                             "fold": fold,
+                            "n_expected_folds": data["n_expected_folds"],
                             "estimator": estimator_name,
                             "error_type": type(error).__name__,
                             "error_message": str(error),
@@ -777,8 +493,7 @@ def run_benchmark(dataset_dictionary, make_estimators, results_file, errors_file
             print(f"Dataset ERROR: {error}")
 
             append_error({
-                "dataset_id": dataset_id,
-                "dataset_name": expected_name,
+                "dataset_name": dataset_name,
                 "fold": None,
                 "estimator": None,
                 "error_type": type(error).__name__,
@@ -793,47 +508,13 @@ def load_complete_dataset_means(
     results_file,
     estimator_order,
     metrics=("accuracy", "fit_time"),
-    n_splits=N_SPLITS,
 ):
-    """Load and aggregate complete cross-validation results by dataset.
+    """Load and aggregate complete results by dataset.
 
-    Fold-level results are averaged separately for every dataset and
-    estimator. Only dataset-estimator combinations containing exactly
-    ``n_splits`` distinct folds are retained. Finally, only datasets with
-    complete results for every requested estimator are returned.
-
-    Parameters
-    ----------
-    results_file : str or pathlib.Path
-        Path to the fold-level CSV file.
-
-    estimator_order : sequence of str
-        Identifiers of estimators required for the comparison. The order is
-        preserved by downstream plotting functions.
-
-    metrics : sequence of str, default=("accuracy", "fit_time")
-        Fold-level metric columns to average for every dataset-estimator
-        combination.
-
-    n_splits : int, default=N_SPLITS
-        Required number of distinct folds for a result to be considered
-        complete.
-
-    Returns
-    -------
-    dataset_means : pandas.DataFrame
-        Dataset-level results containing one row per complete
-        dataset-estimator combination. The returned frame includes averaged
-        metric columns and ``completed_folds``.
-
-    Raises
-    ------
-    FileNotFoundError
-        If ``results_file`` does not exist.
-
-    ValueError
-        If required columns are absent, requested estimators have no results,
-        or no dataset contains complete results for all estimators.
+    A dataset-estimator result is complete when the number of distinct
+    evaluated splits equals the dataset-specific value stored in
+    ``n_expected_folds``. Only datasets with complete results for every
+    requested estimator are returned.
     """
     results_file = Path(results_file)
 
@@ -845,9 +526,10 @@ def load_complete_dataset_means(
     results = pd.read_csv(results_file)
 
     required_columns = {
-        "dataset_id",
         "dataset_name",
-        "fold",
+        "repeat_id",
+        "fold_id",
+        "n_expected_folds",
         "estimator",
         *metrics,
     }
@@ -865,22 +547,49 @@ def load_complete_dataset_means(
     results = results[results["estimator"].isin(estimator_order)].copy()
 
     if results.empty:
-        raise ValueError(
-            "No results were found for the requested "
-            f"estimators: {estimator_order}"
-        )
+        raise ValueError(f"No results were found for the requested estimators: {estimator_order}")
 
-    aggregation = {
-        metric: (metric, "mean")
-        for metric in metrics
-    }
+    results = results.drop_duplicates(
+        subset=[
+            "dataset_name",
+            "repeat_id",
+            "fold_id",
+            "estimator",
+        ],
+        keep="last",
+    )
 
-    aggregation["completed_folds"] = ("fold", "nunique")
+    results["split_key"] = results["repeat_id"].astype(str) + "::" + results["fold_id"].astype(str)
+
+    expected_folds_per_dataset = results.groupby("dataset_name")["n_expected_folds"].nunique()
+
+    inconsistent_datasets = (
+        expected_folds_per_dataset[
+            expected_folds_per_dataset != 1
+        ]
+        .index
+        .tolist()
+    )
+
+    if inconsistent_datasets:
+        raise ValueError(f"Inconsistent n_expected_folds values for datasets: {inconsistent_datasets}")
+
+    aggregation = {metric: (metric, "mean") for metric in metrics}
+
+    aggregation.update({
+        "completed_folds": (
+            "split_key",
+            "nunique",
+        ),
+        "n_expected_folds": (
+            "n_expected_folds",
+            "first",
+        ),
+    })
 
     dataset_means = (
         results.groupby(
             [
-                "dataset_id",
                 "dataset_name",
                 "estimator",
             ],
@@ -889,20 +598,17 @@ def load_complete_dataset_means(
         .agg(**aggregation)
     )
 
-    dataset_means = dataset_means[dataset_means["completed_folds"] == n_splits].copy()
+    dataset_means = dataset_means[
+        dataset_means["completed_folds"]
+        == dataset_means["n_expected_folds"]
+    ].copy()
 
     if dataset_means.empty:
-        raise ValueError(
-            "No estimator has a complete set of "
-            f"{n_splits} folds."
-        )
+        raise ValueError("No estimator has a complete set of dataset-specific splits.")
 
     completeness_matrix = (
         dataset_means.pivot(
-            index=[
-                "dataset_id",
-                "dataset_name",
-            ],
+            index="dataset_name",
             columns="estimator",
             values="completed_folds",
         )
@@ -916,10 +622,7 @@ def load_complete_dataset_means(
     ]
 
     if missing_estimators:
-        raise ValueError(
-            "Missing complete results for estimators: "
-            f"{missing_estimators}"
-        )
+        raise ValueError(f"Missing complete results for estimators: {missing_estimators}")
 
     complete_dataset_index = (
         completeness_matrix[
@@ -932,18 +635,12 @@ def load_complete_dataset_means(
         .index
     )
 
-    dataset_means = dataset_means.set_index(["dataset_id", "dataset_name"])
-
-    dataset_means = dataset_means.loc[
-        dataset_means.index.isin(
-            complete_dataset_index
-        )
-    ].reset_index()
+    dataset_means = dataset_means[
+        dataset_means["dataset_name"].isin(complete_dataset_index)
+    ].reset_index(drop=True)
 
     if dataset_means.empty:
-        raise ValueError(
-            "No dataset has complete results for every requested estimator."
-        )
+        raise ValueError("No dataset has complete results for every requested estimator.")
 
     return dataset_means
 
@@ -1008,7 +705,7 @@ def metric_matrix(
     return matrix
 
 
-def draw_critical_difference_accuracy(
+def draw_significance_accuracy(
     dataset_results,
     estimator_order,
     output_file,
@@ -1030,15 +727,13 @@ def draw_critical_difference_accuracy(
             "diagram."
         )
 
-    fig, ax = plot_critical_difference(
+    fig, ax = plot_significance(
         scores=matrix.to_numpy(),
         labels=list(matrix.columns),
         lower_better=False,
         test="wilcoxon",
         correction="holm",
         alpha=alpha,
-        width=max(8, 1.25 * matrix.shape[1]),
-        textspace=2.0,
     )
     ax.set_title(title)
 

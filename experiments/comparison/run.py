@@ -32,31 +32,10 @@ from aeon.visualisation import plot_pairwise_scatter
 
 from experiments import utils
 from experiments.ablation.validate_default_configuration import SELECTED_DEFAULTS
+from experiments.datasets import COMPARISON_DATASETS
 from experiments.gpr_fast_bridge import GPRFastSubprocessClassifier
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
-
-COMPARISON_DATASETS = {
-    2: "Adult",
-    22: "Chess King-Rook vs. King-Pawn",
-    32: "Cylinder Bands",
-    73: "Mushroom",
-    101: "Tic-Tac-Toe Endgame",
-    159: "MAGIC Gamma Telescope",
-    212: "Vertebral Column",
-    244: "Fertility",
-    336: "Chronic Kidney Disease",
-    350: "Default of Credit Card Clients",
-    372: "HTRU2",
-    468: "Online Shoppers Purchasing Intention",
-    545: "Rice: Cammeo and Osmancik",
-    563: "Iranian Churn",
-    603: "In-Vehicle Coupon Recommendation",
-    728: "Toxicity",
-    732: "DARWIN",
-    850: "Raisin",
-    915: "Differentiated Thyroid Cancer Recurrence",
-}
 
 MODEL_ORDER = [
     "RFR",
@@ -260,7 +239,7 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
     )
     dataset_means.to_csv(DATASET_MEANS_FILE, index=False)
 
-    utils.draw_critical_difference_accuracy(
+    utils.draw_significance_accuracy(
         dataset_results=dataset_means,
         estimator_order=MODEL_ORDER,
         output_file=OUTPUT_DIR / "critical_difference_accuracy.png",
@@ -325,7 +304,7 @@ def main():
             warm_up_estimators()
 
         utils.run_benchmark(
-            dataset_dictionary=COMPARISON_DATASETS,
+            datasets=COMPARISON_DATASETS,
             make_estimators=make_estimators,
             results_file=RESULTS_FILE,
             errors_file=ERRORS_FILE,

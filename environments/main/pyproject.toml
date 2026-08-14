@@ -14,6 +14,7 @@ dependencies = [
     "matplotlib==3.10.7",
     "seaborn==0.13.2",
     "imodels==3.0.0",
+    "data-foundry==0.0.5",
 ]
 
 [tool.uv.sources]

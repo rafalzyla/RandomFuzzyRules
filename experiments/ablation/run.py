@@ -22,7 +22,8 @@ import numpy as np
 import pandas as pd
 
 from experiments import utils
-from experiments.ablation.config import ABLATION_CONFIGS, BASELINE_DEFAULTS, UCI_DATASETS
+from experiments.ablation.config import ABLATION_CONFIGS, BASELINE_DEFAULTS
+from experiments.datasets import ABLATION_DATASETS
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 ALPHA = 0.05
@@ -132,7 +133,7 @@ def run_ablation_study(OUTPUT_ROOT: Path, study_name: str) -> None:
     print("=" * 79)
 
     utils.run_benchmark(
-        dataset_dictionary=UCI_DATASETS,
+        datasets=ABLATION_DATASETS,
         make_estimators=estimator_factory,
         results_file=results_file,
         errors_file=errors_file
@@ -171,7 +172,7 @@ def generate_study_outputs(OUTPUT_ROOT: Path, study_name: str) -> None:
     
     display_labels = _display_labels(study_name)
     
-    utils.draw_critical_difference_accuracy(
+    utils.draw_significance_accuracy(
         dataset_results=dataset_means,
         estimator_order=estimator_order,
         output_file=study_dir / "critical_difference_accuracy.png",

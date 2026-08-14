@@ -1,42 +1,5 @@
 """Configuration shared by RandomFuzzyRules ablation experiments."""
 
-# Development datasets used for hyperparameter selection.
-#
-# These datasets must not be reused for the final comparison benchmark,
-# because the selected RandomFuzzyRules configuration is informed by
-# performance on this collection.
-UCI_DATASETS = {
-    14: "Breast Cancer",
-    15: "Breast Cancer Wisconsin Original",
-    17: "Breast Cancer Wisconsin Diagnostic",
-    27: "Credit Approval",
-    43: "Haberman Survival",
-    45: "Heart Disease",
-    46: "Hepatitis",
-    52: "Ionosphere",
-    74: "Musk Version 1",
-    75: "Musk Version 2",
-    94: "Spambase",
-    95: "SPECT Heart",
-    105: "Congressional Voting Records",
-    144: "Statlog German Credit",
-    151: "Connectionist Bench Sonar",
-    161: "Mammographic Mass",
-    174: "Parkinsons",
-    176: "Blood Transfusion Service Center",
-    222: "Bank Marketing",
-    225: "Indian Liver Patient Dataset",
-    264: "EEG Eye State",
-    267: "Banknote Authentication",
-    277: "Thoracic Surgery",
-    327: "Phishing Websites",
-    329: "Diabetic Retinopathy Debrecen",
-    451: "Breast Cancer Coimbra",
-    519: "Heart Failure Clinical Records",
-    529: "Early Stage Diabetes Risk Prediction",
-}
-
-
 # Original reference configuration used during the one-factor-at-a-time
 # ablation study.
 BASELINE_DEFAULTS = {

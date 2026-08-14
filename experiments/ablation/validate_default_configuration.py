@@ -28,7 +28,8 @@ import pandas as pd
 from aeon.visualisation import plot_pairwise_scatter
 
 from experiments import utils
-from experiments.ablation.config import BASELINE_DEFAULTS, UCI_DATASETS
+from experiments.ablation.config import BASELINE_DEFAULTS
+from experiments.datasets import ABLATION_DATASETS
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
 
@@ -200,7 +201,7 @@ def main():
             warm_up_numba()
 
         utils.run_benchmark(
-            dataset_dictionary=UCI_DATASETS,
+            datasets=ABLATION_DATASETS,
             make_estimators=make_estimators,
             results_file=RESULTS_FILE,
             errors_file=ERRORS_FILE,
