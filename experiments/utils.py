@@ -84,6 +84,9 @@ def load_dataset(dataset_name):
 
     X = X[numerical_columns + categorical_columns] 
 
+    if categorical_columns:
+        X[categorical_columns] = X[categorical_columns].astype("object")
+
     X = X.replace(MISSING_MARKERS, np.nan)
 
     encoder = LabelEncoder()
@@ -116,16 +119,33 @@ def get_transformed_feature_metadata(
 
     Returns
     -------
-    continuous_features : list of int or str
-        Indices of transformed numerical columns. If every output
-        column is numerical, the string "all" is returned.
+    metadata : dict
+        Dictionary containing:
 
-    categorical_feature_groups : list of tuple of int
-        Each tuple contains transformed-column indices belonging
-        to one original categorical variable.
+        continuous_features : list of int or {"all"}
+            Indices of transformed numerical columns. If all transformed
+            columns are numerical, the string ``"all"`` is returned.
+
+        categorical_feature_groups : list of tuple of int
+            Each tuple contains transformed-column indices derived from one
+            original categorical feature.
+
+    Raises
+    ------
+    RuntimeError
+        If the reconstructed transformed-feature indices do not match the
+        actual number of columns emitted by the fitted preprocessor.
+
+    Notes
+    -----
+    When ``OneHotEncoder`` uses ``max_categories`` or ``min_frequency``,
+    ``encoder.categories_`` still contains all categories observed during
+    fitting. Categories marked as infrequent are represented by one shared
+    output column. Consequently, the number of output columns for a feature
+    may be smaller than ``len(encoder.categories_[i])``.
     """
-    # ColumnTransformer emits transformers in their declared order.
-    # In make_preprocessor, numeric columns are added first.
+    # ColumnTransformer emits numerical columns first because the numerical
+    # transformer is added before the categorical transformer.
     n_numerical = len(numerical_columns)
 
     continuous_indices = list(range(n_numerical))
@@ -133,33 +153,37 @@ def get_transformed_feature_metadata(
     categorical_groups = []
 
     if categorical_columns:
-        categorical_pipeline = (
-            fitted_preprocessor.named_transformers_[
-                "categorical"
-            ]
-        )
+        categorical_pipeline = fitted_preprocessor.named_transformers_["categorical"]
 
-        encoder = (
-            categorical_pipeline.named_steps["onehot"]
-        )
+        encoder = categorical_pipeline.named_steps["onehot"]
 
         current_index = n_numerical
 
-        for categories in encoder.categories_:
-            group_size = len(categories)
+        infrequent_categories = getattr(
+            encoder,
+            "infrequent_categories_",
+            None,
+        )
 
-            group = tuple(
-                range(
-                    current_index,
-                    current_index + group_size,
-                )
-            )
+        for feature_index, categories in enumerate(encoder.categories_):
+            if infrequent_categories is None:
+                infrequent = None
+            else:
+                infrequent = infrequent_categories[feature_index]
+
+            if infrequent is None:
+                group_size = len(categories)
+            else:
+                # All categories listed in `infrequent` are replaced by one
+                # shared `infrequent_sklearn` output column.
+                group_size = len(categories) - len(infrequent) + 1
+
+            group = tuple(range(current_index, current_index + group_size))
 
             categorical_groups.append(group)
             current_index += group_size
 
     if not categorical_groups:
-        # Convenient shortcut required by the classifier API.
         continuous_features = "all"
     else:
         continuous_features = continuous_indices
@@ -169,9 +193,7 @@ def get_transformed_feature_metadata(
     for group in categorical_groups:
         described_indices.update(group)
 
-    expected_indices = set(
-        range(n_transformed_features)
-    )
+    expected_indices = set(range(n_transformed_features))
 
     if described_indices != expected_indices:
         missing = sorted(
@@ -185,6 +207,9 @@ def get_transformed_feature_metadata(
             "Inconsistent transformed-feature metadata. "
             f"Missing indices: {missing}; "
             f"unexpected indices: {unexpected}; "
+            f"described columns: {len(described_indices)}; "
+            f"actual transformed columns: "
+            f"{n_transformed_features}."
         )
 
     return {
@@ -224,6 +249,7 @@ def make_preprocessor(numerical_columns, categorical_columns):
                 handle_unknown="ignore",
                 sparse_output=False,
                 dtype=np.float64,
+                max_categories=100,
             ),
             ),
         ])
