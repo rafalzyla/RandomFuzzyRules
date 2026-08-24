@@ -50,11 +50,11 @@ SELECTED_DEFAULTS = {
     "max_rules_len": 2,
     "max_literal_repetitions": 1,
     "threshold": 0.5,
-    "n_candidates": 10_000,
-    "max_sampling_attempts": 100_000,
+    "n_candidates": 1_000,
+    "max_sampling_attempts": 20_000,
     "sampling_type_number": 1,
     "sampling_type_length": 2,
-    "quantile_transform": "uniform",
+    "quantile_transform": None,
     "preprocessed": True,
 }
 

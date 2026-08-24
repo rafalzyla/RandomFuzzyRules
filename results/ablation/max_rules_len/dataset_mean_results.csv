@@ -1,169 +1,151 @@
-dataset_id,dataset_name,estimator,accuracy,fit_time,completed_folds
-14,Breast Cancer,RandomFuzzyRules__max_rules_len__2,0.762807881773399,0.03725461000285571,10
-14,Breast Cancer,RandomFuzzyRules__max_rules_len__3,0.7310344827586207,0.03612353999924376,10
-14,Breast Cancer,RandomFuzzyRules__max_rules_len__4,0.7486453201970443,0.039487880001252,10
-14,Breast Cancer,RandomFuzzyRules__max_rules_len__5,0.7310344827586207,0.04027289000223386,10
-14,Breast Cancer,RandomFuzzyRules__max_rules_len__6,0.7310344827586207,0.04244089999992862,10
-14,Breast Cancer,RandomFuzzyRules__max_rules_len__7,0.7450738916256158,0.04604849000315876,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_rules_len__2,0.9456521739130436,0.05337579999759325,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_rules_len__3,0.9527950310559007,0.052566490002209275,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_rules_len__4,0.9556521739130435,0.0538973800008534,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_rules_len__5,0.9570393374741201,0.05490089000086294,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_rules_len__6,0.9599585921325051,0.058839210000587595,10
-15,Breast Cancer Wisconsin (Original),RandomFuzzyRules__max_rules_len__7,0.9513457556935817,0.06224941000109533,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_rules_len__2,0.9174498746867169,0.04312234000244638,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_rules_len__3,0.9350877192982455,0.044015739999304,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_rules_len__4,0.9210213032581454,0.04473185000097142,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_rules_len__5,0.9192042606516291,0.04772356999892506,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_rules_len__6,0.9209586466165414,0.04875820000015659,10
-17,Breast Cancer Wisconsin (Diagnostic),RandomFuzzyRules__max_rules_len__7,0.9174498746867169,0.049655709999205946,10
-27,Credit Approval,RandomFuzzyRules__max_rules_len__2,0.8478260869565217,0.043154580000555096,10
-27,Credit Approval,RandomFuzzyRules__max_rules_len__3,0.844927536231884,0.04456206999893762,10
-27,Credit Approval,RandomFuzzyRules__max_rules_len__4,0.8579710144927537,0.049533320001501055,10
-27,Credit Approval,RandomFuzzyRules__max_rules_len__5,0.8492753623188406,0.04862579000036926,10
-27,Credit Approval,RandomFuzzyRules__max_rules_len__6,0.8478260869565217,0.051559569999517364,10
-27,Credit Approval,RandomFuzzyRules__max_rules_len__7,0.8478260869565217,0.0515208999990136,10
-43,Haberman's Survival,RandomFuzzyRules__max_rules_len__2,0.7481720430107527,0.051503779999620705,10
-43,Haberman's Survival,RandomFuzzyRules__max_rules_len__3,0.7251612903225806,0.06041677999746749,10
-43,Haberman's Survival,RandomFuzzyRules__max_rules_len__4,0.7546236559139785,0.07844781999883704,10
-43,Haberman's Survival,RandomFuzzyRules__max_rules_len__5,0.728494623655914,0.10114078000042351,10
-43,Haberman's Survival,RandomFuzzyRules__max_rules_len__6,0.7153763440860215,0.12401135000109202,10
-43,Haberman's Survival,RandomFuzzyRules__max_rules_len__7,0.7218279569892473,0.14881985999963943,10
-45,Heart Disease,RandomFuzzyRules__max_rules_len__2,0.7883870967741935,0.03926558000093787,10
-45,Heart Disease,RandomFuzzyRules__max_rules_len__3,0.8017204301075269,0.03858467000100058,10
-45,Heart Disease,RandomFuzzyRules__max_rules_len__4,0.7455913978494624,0.03984210000198797,10
-45,Heart Disease,RandomFuzzyRules__max_rules_len__5,0.7652688172043011,0.041472100002283664,10
-45,Heart Disease,RandomFuzzyRules__max_rules_len__6,0.7194623655913979,0.04361846999818222,10
-45,Heart Disease,RandomFuzzyRules__max_rules_len__7,0.7424731182795699,0.04517410999978888,10
-46,Hepatitis,RandomFuzzyRules__max_rules_len__2,0.7991666666666666,0.03361998999898782,10
-46,Hepatitis,RandomFuzzyRules__max_rules_len__3,0.79375,0.035197899998456676,10
-46,Hepatitis,RandomFuzzyRules__max_rules_len__4,0.8004166666666667,0.03543237999838309,10
-46,Hepatitis,RandomFuzzyRules__max_rules_len__5,0.79375,0.03627587000082708,10
-46,Hepatitis,RandomFuzzyRules__max_rules_len__6,0.8,0.0370837199996458,10
-46,Hepatitis,RandomFuzzyRules__max_rules_len__7,0.775,0.03908380000211759,10
-52,Ionosphere,RandomFuzzyRules__max_rules_len__2,0.7947619047619048,0.03996436000015816,10
-52,Ionosphere,RandomFuzzyRules__max_rules_len__3,0.8318253968253968,0.04123938000120683,10
-52,Ionosphere,RandomFuzzyRules__max_rules_len__4,0.808968253968254,0.044426229999226,10
-52,Ionosphere,RandomFuzzyRules__max_rules_len__5,0.809047619047619,0.04266996999940597,10
-52,Ionosphere,RandomFuzzyRules__max_rules_len__6,0.8375396825396825,0.04440756000112736,10
-52,Ionosphere,RandomFuzzyRules__max_rules_len__7,0.7976190476190477,0.0498705599980894,10
-74,Musk (Version 1),RandomFuzzyRules__max_rules_len__2,0.6768173758865248,0.042224510000960405,10
-74,Musk (Version 1),RandomFuzzyRules__max_rules_len__3,0.708200354609929,0.04459921000088794,10
-74,Musk (Version 1),RandomFuzzyRules__max_rules_len__4,0.708200354609929,0.04569841000193259,10
-74,Musk (Version 1),RandomFuzzyRules__max_rules_len__5,0.708200354609929,0.050457419999293,10
-74,Musk (Version 1),RandomFuzzyRules__max_rules_len__6,0.708200354609929,0.05098315999784968,10
-74,Musk (Version 1),RandomFuzzyRules__max_rules_len__7,0.708200354609929,0.05318517999985484,10
-75,Musk (Version 2),RandomFuzzyRules__max_rules_len__2,0.8482873499793074,0.2844472600030713,10
-75,Musk (Version 2),RandomFuzzyRules__max_rules_len__3,0.8579891479284498,0.31212472000188424,10
-75,Musk (Version 2),RandomFuzzyRules__max_rules_len__4,0.8601096702993516,0.33318859999853884,10
-75,Musk (Version 2),RandomFuzzyRules__max_rules_len__5,0.855715271071872,0.3427435499994317,10
-75,Musk (Version 2),RandomFuzzyRules__max_rules_len__6,0.8592019588908816,0.36542129000008566,10
-75,Musk (Version 2),RandomFuzzyRules__max_rules_len__7,0.8487435048512438,0.37952806000103007,10
-94,Spambase,RandomFuzzyRules__max_rules_len__2,0.615515891728756,0.11837340999773001,10
-94,Spambase,RandomFuzzyRules__max_rules_len__3,0.613127416768839,0.12868488000240175,10
-94,Spambase,RandomFuzzyRules__max_rules_len__4,0.6142148448552296,0.14231287000002335,10
-94,Spambase,RandomFuzzyRules__max_rules_len__5,0.637904366688673,0.14883274999592683,10
-94,Spambase,RandomFuzzyRules__max_rules_len__6,0.6224733565971895,0.1613691099977586,10
-94,Spambase,RandomFuzzyRules__max_rules_len__7,0.6135603131189287,0.1621810399985406,10
-95,SPECT Heart,RandomFuzzyRules__max_rules_len__2,0.7944444444444445,0.03698511000111462,10
-95,SPECT Heart,RandomFuzzyRules__max_rules_len__3,0.7195156695156695,0.03802034000109411,10
-95,SPECT Heart,RandomFuzzyRules__max_rules_len__4,0.7794871794871795,0.03765231999859675,10
-95,SPECT Heart,RandomFuzzyRules__max_rules_len__5,0.8319088319088319,0.03921296999615146,10
-95,SPECT Heart,RandomFuzzyRules__max_rules_len__6,0.7491452991452991,0.04103629000164797,10
-95,SPECT Heart,RandomFuzzyRules__max_rules_len__7,0.8321937321937323,0.04126769999857055,10
-105,Congressional Voting Records,RandomFuzzyRules__max_rules_len__2,0.9563424947145878,0.04539085999713277,10
-105,Congressional Voting Records,RandomFuzzyRules__max_rules_len__3,0.9563424947145878,0.04372786000021728,10
-105,Congressional Voting Records,RandomFuzzyRules__max_rules_len__4,0.9563424947145878,0.04196621000301089,10
-105,Congressional Voting Records,RandomFuzzyRules__max_rules_len__5,0.9563424947145878,0.04467432999808803,10
-105,Congressional Voting Records,RandomFuzzyRules__max_rules_len__6,0.9563424947145878,0.04812930000043703,10
-105,Congressional Voting Records,RandomFuzzyRules__max_rules_len__7,0.9563424947145878,0.04738800000341139,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_rules_len__2,0.708,0.05702600000076924,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_rules_len__3,0.714,0.06446492999966716,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_rules_len__4,0.705,0.07295002000173549,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_rules_len__5,0.727,0.07766096000268584,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_rules_len__6,0.712,0.08106334999902169,10
-144,Statlog (German Credit Data),RandomFuzzyRules__max_rules_len__7,0.727,0.07756679999729382,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_rules_len__2,0.7066666666666667,0.03575329000013875,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_rules_len__3,0.6723809523809524,0.03649701999966051,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_rules_len__4,0.6776190476190476,0.03701196000038176,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_rules_len__5,0.7014285714285714,0.03870290999911954,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_rules_len__6,0.7259523809523809,0.03775665000139266,10
-151,"Connectionist Bench (Sonar, Mines vs. Rocks)",RandomFuzzyRules__max_rules_len__7,0.6728571428571428,0.04124522000201973,10
-161,Mammographic Mass,RandomFuzzyRules__max_rules_len__2,0.7940077319587628,0.06082576000335389,10
-161,Mammographic Mass,RandomFuzzyRules__max_rules_len__3,0.8054445876288661,0.06298848000005815,10
-161,Mammographic Mass,RandomFuzzyRules__max_rules_len__4,0.8085910652920962,0.06765214000188277,10
-161,Mammographic Mass,RandomFuzzyRules__max_rules_len__5,0.8148410652920962,0.07758489999978331,10
-161,Mammographic Mass,RandomFuzzyRules__max_rules_len__6,0.7887779209621992,0.08158561999734952,10
-161,Mammographic Mass,RandomFuzzyRules__max_rules_len__7,0.7815077319587629,0.09092002999532264,10
-174,Parkinsons,RandomFuzzyRules__max_rules_len__2,0.8610526315789473,0.03546759000309972,10
-174,Parkinsons,RandomFuzzyRules__max_rules_len__3,0.8402631578947368,0.03578893000085368,10
-174,Parkinsons,RandomFuzzyRules__max_rules_len__4,0.835,0.03787389000062827,10
-174,Parkinsons,RandomFuzzyRules__max_rules_len__5,0.8610526315789473,0.039164839999284565,10
-174,Parkinsons,RandomFuzzyRules__max_rules_len__6,0.8610526315789473,0.03997147999907607,10
-174,Parkinsons,RandomFuzzyRules__max_rules_len__7,0.8092105263157894,0.041457300000183675,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_rules_len__2,0.7606666666666666,0.05356592000171073,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_rules_len__3,0.7646666666666666,0.05624072000064184,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_rules_len__4,0.7673333333333333,0.06408553000073873,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_rules_len__5,0.7646666666666666,0.07266531999921423,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_rules_len__6,0.7673333333333333,0.08398754000081676,10
-176,Blood Transfusion Service Center,RandomFuzzyRules__max_rules_len__7,0.7646666666666666,0.0928398599979118,10
-222,Bank Marketing,RandomFuzzyRules__max_rules_len__2,0.8929021537019096,1.6483577699997114,10
-222,Bank Marketing,RandomFuzzyRules__max_rules_len__3,0.8924818975891269,1.7436211800042656,10
-222,Bank Marketing,RandomFuzzyRules__max_rules_len__4,0.8929021537019096,1.7629165699967415,10
-222,Bank Marketing,RandomFuzzyRules__max_rules_len__5,0.8929021537019096,1.8318742899980862,10
-222,Bank Marketing,RandomFuzzyRules__max_rules_len__6,0.892747325591781,1.8195822100009535,10
-222,Bank Marketing,RandomFuzzyRules__max_rules_len__7,0.8928136874838645,1.7820912300041527,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_rules_len__2,0.7014611338398598,0.04809139999997564,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_rules_len__3,0.6981297486849796,0.04846551000227914,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_rules_len__4,0.6928696668614844,0.052271669998299276,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_rules_len__5,0.7014903565166569,0.051968570001190484,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_rules_len__6,0.6877849210987727,0.060669780003081486,10
-225,ILPD (Indian Liver Patient Dataset),RandomFuzzyRules__max_rules_len__7,0.7014903565166569,0.062160940002649975,10
-264,EEG Eye State,RandomFuzzyRules__max_rules_len__2,0.5779706275033378,0.3400523399977828,10
-264,EEG Eye State,RandomFuzzyRules__max_rules_len__3,0.5767690253671562,0.37434863999806106,10
-264,EEG Eye State,RandomFuzzyRules__max_rules_len__4,0.5796395193591455,0.3800269500003196,10
-264,EEG Eye State,RandomFuzzyRules__max_rules_len__5,0.5761682242990653,0.392892269998265,10
-264,EEG Eye State,RandomFuzzyRules__max_rules_len__6,0.5783711615487317,0.4071066400007112,10
-264,EEG Eye State,RandomFuzzyRules__max_rules_len__7,0.576502002670227,0.408530960000644,10
-267,Banknote Authentication,RandomFuzzyRules__max_rules_len__2,0.9526235057653654,0.07296042999951165,10
-267,Banknote Authentication,RandomFuzzyRules__max_rules_len__3,0.9526235057653654,0.07626946999953355,10
-267,Banknote Authentication,RandomFuzzyRules__max_rules_len__4,0.9569924891568814,0.08665743000165091,10
-267,Banknote Authentication,RandomFuzzyRules__max_rules_len__5,0.9526235057653654,0.09139955999708031,10
-267,Banknote Authentication,RandomFuzzyRules__max_rules_len__6,0.918380408335978,0.10482358999724961,10
-267,Banknote Authentication,RandomFuzzyRules__max_rules_len__7,0.9526235057653654,0.11596668999845856,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_rules_len__2,0.8446808510638298,0.04007831999915647,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_rules_len__3,0.8468085106382979,0.04084753000206542,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_rules_len__4,0.8319148936170213,0.04374850999884067,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_rules_len__5,0.8531914893617021,0.04359339000220638,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_rules_len__6,0.8531914893617021,0.04498323999869168,10
-277,Thoracic Surgery Data,RandomFuzzyRules__max_rules_len__7,0.8574468085106384,0.046811869999510196,10
-327,Phishing Websites,RandomFuzzyRules__max_rules_len__2,0.9031204536342287,0.30273225999699205,10
-327,Phishing Websites,RandomFuzzyRules__max_rules_len__3,0.888920163976009,0.3239538500012713,10
-327,Phishing Websites,RandomFuzzyRules__max_rules_len__4,0.8981468419889864,0.3352979599992977,10
-327,Phishing Websites,RandomFuzzyRules__max_rules_len__5,0.9062868107320824,0.3477304199986974,10
-327,Phishing Websites,RandomFuzzyRules__max_rules_len__6,0.8920852937085252,0.35200480999919814,10
-327,Phishing Websites,RandomFuzzyRules__max_rules_len__7,0.888920163976009,0.3682077200021012,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_rules_len__2,0.6350674662668665,0.05652424000290914,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_rules_len__3,0.6168515742128935,0.058755070000188404,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_rules_len__4,0.5708020989505247,0.05945972000044998,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_rules_len__5,0.5960194902548726,0.062020220000704215,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_rules_len__6,0.6150824587706147,0.06532657999923681,10
-329,Diabetic Retinopathy Debrecen,RandomFuzzyRules__max_rules_len__7,0.5681934032983509,0.06600269999908046,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_rules_len__2,0.6484848484848486,0.0360750700026983,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_rules_len__3,0.5265151515151515,0.036556129997188644,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_rules_len__4,0.5863636363636363,0.0380888500003493,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_rules_len__5,0.603030303030303,0.04132112999650413,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_rules_len__6,0.6818181818181819,0.04276452000340208,10
-451,Breast Cancer Coimbra,RandomFuzzyRules__max_rules_len__7,0.6045454545454546,0.04795753000216786,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_rules_len__2,0.849425287356322,0.0420674499997403,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_rules_len__3,0.8526436781609196,0.04223142000410003,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_rules_len__4,0.835977011494253,0.04332596000022017,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_rules_len__5,0.8293103448275863,0.04499296000285536,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_rules_len__6,0.8293103448275863,0.045910390000790315,10
-519,Heart Failure Clinical Records,RandomFuzzyRules__max_rules_len__7,0.8093103448275862,0.050043499997991556,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_rules_len__2,0.8711538461538462,0.04372963999921917,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_rules_len__3,0.8807692307692309,0.04252981000026917,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_rules_len__4,0.8730769230769232,0.04378825999883697,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_rules_len__5,0.8711538461538462,0.04479456000117347,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_rules_len__6,0.8846153846153847,0.04706737000233255,10
-529,Early Stage Diabetes Risk Prediction,RandomFuzzyRules__max_rules_len__7,0.8557692307692308,0.0466787000012118,10
+dataset_name,estimator,accuracy,fit_time,completed_folds,n_expected_folds
+anes_voting_2026,RandomFuzzyRules__max_rules_len__2,0.8216250702294655,1.0378793828034152,9,9
+anes_voting_2026,RandomFuzzyRules__max_rules_len__3,0.822328432611267,1.143311666014294,9,9
+anes_voting_2026,RandomFuzzyRules__max_rules_len__4,0.8510907578731612,1.2053682996839699,9,9
+anes_voting_2026,RandomFuzzyRules__max_rules_len__5,0.8326722083829754,1.276640450193857,9,9
+anes_voting_2026,RandomFuzzyRules__max_rules_len__6,0.8302959829516987,1.3506044344459143,9,9
+anes_voting_2026,RandomFuzzyRules__max_rules_len__7,0.7750927468854395,1.4298158077160932,9,9
+aps_failure,RandomFuzzyRules__max_rules_len__2,0.9828771923994343,0.7899001572125902,9,9
+aps_failure,RandomFuzzyRules__max_rules_len__3,0.9834736809153735,0.8792437872487224,9,9
+aps_failure,RandomFuzzyRules__max_rules_len__4,0.9830570153450395,0.9773774551382909,9,9
+aps_failure,RandomFuzzyRules__max_rules_len__5,0.9836052615940668,1.053773519764137,9,9
+aps_failure,RandomFuzzyRules__max_rules_len__6,0.9832061366516667,1.1408010991031512,9,9
+aps_failure,RandomFuzzyRules__max_rules_len__7,0.9833245596087463,1.172329371329397,9,9
+bank_marketing,RandomFuzzyRules__max_rules_len__2,0.8928726694041431,0.1932420802509619,9,9
+bank_marketing,RandomFuzzyRules__max_rules_len__3,0.8929021609152203,0.19642637600190935,9,9
+bank_marketing,RandomFuzzyRules__max_rules_len__4,0.8927989384249704,0.19843315630633795,9,9
+bank_marketing,RandomFuzzyRules__max_rules_len__5,0.8928800399581284,0.20009793586925495,9,9
+bank_marketing,RandomFuzzyRules__max_rules_len__6,0.8927325843596131,0.20834557295569942,9,9
+bank_marketing,RandomFuzzyRules__max_rules_len__7,0.8929463954911387,0.19984846313794452,9,9
+blood_transfusion,RandomFuzzyRules__max_rules_len__2,0.7633668005354752,0.019493808806873805,60,60
+blood_transfusion,RandomFuzzyRules__max_rules_len__3,0.7662412315930388,0.0217925519139195,60,60
+blood_transfusion,RandomFuzzyRules__max_rules_len__4,0.7653732262382865,0.026243921109319928,60,60
+blood_transfusion,RandomFuzzyRules__max_rules_len__5,0.7643030789825971,0.03205262750464797,60,60
+blood_transfusion,RandomFuzzyRules__max_rules_len__6,0.7659065595716199,0.03806054669742778,60,60
+blood_transfusion,RandomFuzzyRules__max_rules_len__7,0.763633467202142,0.045117316794736885,60,60
+coil_2000,RandomFuzzyRules__max_rules_len__2,0.9396932057286365,0.05973661913433005,9,9
+coil_2000,RandomFuzzyRules__max_rules_len__3,0.9399647050838253,0.06044474451078304,9,9
+coil_2000,RandomFuzzyRules__max_rules_len__4,0.9399307676644268,0.062232428489045914,9,9
+coil_2000,RandomFuzzyRules__max_rules_len__5,0.9399647050838253,0.06361776334233576,9,9
+coil_2000,RandomFuzzyRules__max_rules_len__6,0.9398968302450282,0.06492117851869095,9,9
+coil_2000,RandomFuzzyRules__max_rules_len__7,0.9400665173420213,0.06623158440925177,9,9
+credit_approval,RandomFuzzyRules__max_rules_len__2,0.8492028985507247,0.015725194476544798,60,60
+credit_approval,RandomFuzzyRules__max_rules_len__3,0.8514492753623188,0.016377555598349584,60,60
+credit_approval,RandomFuzzyRules__max_rules_len__4,0.8501449275362318,0.01733041397140667,60,60
+credit_approval,RandomFuzzyRules__max_rules_len__5,0.8515217391304348,0.01841948425086831,60,60
+credit_approval,RandomFuzzyRules__max_rules_len__6,0.8493478260869566,0.01947592291592926,60,60
+credit_approval,RandomFuzzyRules__max_rules_len__7,0.85,0.02074636399435496,60,60
+early_stage_diabetes_risk_prediction,RandomFuzzyRules__max_rules_len__2,0.8404068655574679,0.013600996144426317,60,60
+early_stage_diabetes_risk_prediction,RandomFuzzyRules__max_rules_len__3,0.851372155287818,0.013641710459099406,60,60
+early_stage_diabetes_risk_prediction,RandomFuzzyRules__max_rules_len__4,0.8336727863836297,0.01403136074853435,60,60
+early_stage_diabetes_risk_prediction,RandomFuzzyRules__max_rules_len__5,0.8406339644291452,0.014560220200413166,60,60
+early_stage_diabetes_risk_prediction,RandomFuzzyRules__max_rules_len__6,0.8459863262574105,0.015174459844517159,60,60
+early_stage_diabetes_risk_prediction,RandomFuzzyRules__max_rules_len__7,0.8334313444253204,0.0158360589955312,60,60
+give_me_some_credit,RandomFuzzyRules__max_rules_len__2,0.9333288888888889,1.2856495025722932,9,9
+give_me_some_credit,RandomFuzzyRules__max_rules_len__3,0.9332622222222222,1.331328513669885,9,9
+give_me_some_credit,RandomFuzzyRules__max_rules_len__4,0.9333266666666667,1.3576168129996706,9,9
+give_me_some_credit,RandomFuzzyRules__max_rules_len__5,0.9332666666666667,1.3808836092551549,9,9
+give_me_some_credit,RandomFuzzyRules__max_rules_len__6,0.9332666666666667,1.4149735234419092,9,9
+give_me_some_credit,RandomFuzzyRules__max_rules_len__7,0.9332666666666667,1.4390153879972383,9,9
+heart_disease_cleveland,RandomFuzzyRules__max_rules_len__2,0.7645214521452145,0.0143205852558215,60,60
+heart_disease_cleveland,RandomFuzzyRules__max_rules_len__3,0.7674917491749175,0.014647865594209431,60,60
+heart_disease_cleveland,RandomFuzzyRules__max_rules_len__4,0.75,0.0154096423919933,60,60
+heart_disease_cleveland,RandomFuzzyRules__max_rules_len__5,0.7427392739273928,0.016343333385884708,60,60
+heart_disease_cleveland,RandomFuzzyRules__max_rules_len__6,0.7343234323432344,0.01729943947090452,60,60
+heart_disease_cleveland,RandomFuzzyRules__max_rules_len__7,0.746039603960396,0.01847634535515676,60,60
+heart_failure_followup_survival,RandomFuzzyRules__max_rules_len__2,0.8362491582491582,0.015081008096846394,60,60
+heart_failure_followup_survival,RandomFuzzyRules__max_rules_len__3,0.8464410774410774,0.0156746353837661,60,60
+heart_failure_followup_survival,RandomFuzzyRules__max_rules_len__4,0.8294040404040405,0.01673723012596985,60,60
+heart_failure_followup_survival,RandomFuzzyRules__max_rules_len__5,0.830409090909091,0.01771905080725745,60,60
+heart_failure_followup_survival,RandomFuzzyRules__max_rules_len__6,0.8255757575757575,0.019397571244432237,60,60
+heart_failure_followup_survival,RandomFuzzyRules__max_rules_len__7,0.8192138047138047,0.020896020283301616,60,60
+hepatitis_survival_prediction,RandomFuzzyRules__max_rules_len__2,0.8055492709904475,0.01240455826433992,60,60
+hepatitis_survival_prediction,RandomFuzzyRules__max_rules_len__3,0.8006913021618904,0.012627684068866024,60,60
+hepatitis_survival_prediction,RandomFuzzyRules__max_rules_len__4,0.8029725992961286,0.01337337006116281,60,60
+hepatitis_survival_prediction,RandomFuzzyRules__max_rules_len__5,0.8004147812971342,0.013880352380995898,60,60
+hepatitis_survival_prediction,RandomFuzzyRules__max_rules_len__6,0.7967571644042232,0.014489321309762644,60,60
+hepatitis_survival_prediction,RandomFuzzyRules__max_rules_len__7,0.7962104072398191,0.015211546056282969,60,60
+homeq_default_prediction,RandomFuzzyRules__max_rules_len__2,0.8212454345365853,0.04734457180731821,9,9
+homeq_default_prediction,RandomFuzzyRules__max_rules_len__3,0.8237566120901582,0.047567736642021234,9,9
+homeq_default_prediction,RandomFuzzyRules__max_rules_len__4,0.8245742497579626,0.04854362020786433,9,9
+homeq_default_prediction,RandomFuzzyRules__max_rules_len__5,0.8242821288626434,0.049612154899578924,9,9
+homeq_default_prediction,RandomFuzzyRules__max_rules_len__6,0.8202522357716464,0.05169360947588247,9,9
+homeq_default_prediction,RandomFuzzyRules__max_rules_len__7,0.8246324529123894,0.05303833812164757,9,9
+homesite_quote_conversion,RandomFuzzyRules__max_rules_len__2,0.8201593088602618,3.738766494181214,9,9
+homesite_quote_conversion,RandomFuzzyRules__max_rules_len__3,0.8201593088602618,4.0806422055595455,9,9
+homesite_quote_conversion,RandomFuzzyRules__max_rules_len__4,0.8208585628390009,4.5464620607284205,9,9
+homesite_quote_conversion,RandomFuzzyRules__max_rules_len__5,0.8201593088602618,4.728064744190003,9,9
+homesite_quote_conversion,RandomFuzzyRules__max_rules_len__6,0.8201593088602618,5.117839124415898,9,9
+homesite_quote_conversion,RandomFuzzyRules__max_rules_len__7,0.8224475514188465,5.311003864846295,9,9
+indian_liver_patient_dataset,RandomFuzzyRules__max_rules_len__2,0.6999991188650981,0.016117390252960176,60,60
+indian_liver_patient_dataset,RandomFuzzyRules__max_rules_len__3,0.700081945545863,0.016774898654936452,60,60
+indian_liver_patient_dataset,RandomFuzzyRules__max_rules_len__4,0.7023156225218081,0.01783637308205162,60,60
+indian_liver_patient_dataset,RandomFuzzyRules__max_rules_len__5,0.6993122742091814,0.0192897761939093,60,60
+indian_liver_patient_dataset,RandomFuzzyRules__max_rules_len__6,0.7013675213675213,0.020864446662987222,60,60
+indian_liver_patient_dataset,RandomFuzzyRules__max_rules_len__7,0.7079742708608687,0.02300095274889217,60,60
+iranian_churn,RandomFuzzyRules__max_rules_len__2,0.9033684210526316,0.0321369506961976,30,30
+iranian_churn,RandomFuzzyRules__max_rules_len__3,0.903157894736842,0.03198541930566226,30,30
+iranian_churn,RandomFuzzyRules__max_rules_len__4,0.9007719298245614,0.032776536466553756,30,30
+iranian_churn,RandomFuzzyRules__max_rules_len__5,0.9038947368421052,0.033766122418455745,30,30
+iranian_churn,RandomFuzzyRules__max_rules_len__6,0.9029122807017543,0.034493710054084616,30,30
+iranian_churn,RandomFuzzyRules__max_rules_len__7,0.9036491228070176,0.03531069067151591,30,30
+jm1,RandomFuzzyRules__max_rules_len__2,0.8094625430658544,0.04328498634923659,9,9
+jm1,RandomFuzzyRules__max_rules_len__3,0.8090644642010386,0.04587623471808098,9,9
+jm1,RandomFuzzyRules__max_rules_len__4,0.8091257161917284,0.04811422469922233,9,9
+jm1,RandomFuzzyRules__max_rules_len__5,0.8090644557618004,0.048024691253279586,9,9
+jm1,RandomFuzzyRules__max_rules_len__6,0.8088194815559944,0.04979803658918371,9,9
+jm1,RandomFuzzyRules__max_rules_len__7,0.8086663347007937,0.05063852644525465,9,9
+ljubljana_breast_cancer,RandomFuzzyRules__max_rules_len__2,0.7259009502923977,0.01491295776795591,60,60
+ljubljana_breast_cancer,RandomFuzzyRules__max_rules_len__3,0.7291922514619883,0.01553174302680413,60,60
+ljubljana_breast_cancer,RandomFuzzyRules__max_rules_len__4,0.7295504385964912,0.016935511562041886,60,60
+ljubljana_breast_cancer,RandomFuzzyRules__max_rules_len__5,0.7218658625730995,0.018587162489226657,60,60
+ljubljana_breast_cancer,RandomFuzzyRules__max_rules_len__6,0.7285252192982455,0.020524912393496634,60,60
+ljubljana_breast_cancer,RandomFuzzyRules__max_rules_len__7,0.7290168128654971,0.02236494279544175,60,60
+lung_cancer_epithelial_genexp,RandomFuzzyRules__max_rules_len__2,0.6170208226659839,0.027369256468955376,60,60
+lung_cancer_epithelial_genexp,RandomFuzzyRules__max_rules_len__3,0.6558755760368663,0.02888637294139088,60,60
+lung_cancer_epithelial_genexp,RandomFuzzyRules__max_rules_len__4,0.584199522102748,0.0292213516697908,60,60
+lung_cancer_epithelial_genexp,RandomFuzzyRules__max_rules_len__5,0.654915514592934,0.029198312274335524,60,60
+lung_cancer_epithelial_genexp,RandomFuzzyRules__max_rules_len__6,0.5995519713261649,0.029326144439013005,60,60
+lung_cancer_epithelial_genexp,RandomFuzzyRules__max_rules_len__7,0.5988820617852876,0.029757167530866914,60,60
+marketing_campaign,RandomFuzzyRules__max_rules_len__2,0.8645096322136925,0.02582154557264095,30,30
+marketing_campaign,RandomFuzzyRules__max_rules_len__3,0.8637064791785551,0.02695061030487215,30,30
+marketing_campaign,RandomFuzzyRules__max_rules_len__4,0.8625023776966668,0.0276077451339612,30,30
+marketing_campaign,RandomFuzzyRules__max_rules_len__5,0.8640185406505378,0.028496702465539127,30,30
+marketing_campaign,RandomFuzzyRules__max_rules_len__6,0.8616090217288577,0.028924716295053512,30,30
+marketing_campaign,RandomFuzzyRules__max_rules_len__7,0.8623228690753482,0.03035688777454193,30,30
+musk,RandomFuzzyRules__max_rules_len__2,0.8006030145408791,0.052004736207891214,60,60
+musk,RandomFuzzyRules__max_rules_len__3,0.8041111867356501,0.049697117918791826,60,60
+musk,RandomFuzzyRules__max_rules_len__4,0.8111833968870131,0.05162857788770144,60,60
+musk,RandomFuzzyRules__max_rules_len__5,0.8013082619554116,0.052474311355035705,60,60
+musk,RandomFuzzyRules__max_rules_len__6,0.8059631889056894,0.054644352387792076,60,60
+musk,RandomFuzzyRules__max_rules_len__7,0.8089779533549083,0.05545015730507046,60,60
+pancreatic_cancer_mouse_detection,RandomFuzzyRules__max_rules_len__2,0.5349122808314654,0.01665920909338936,60,60
+pancreatic_cancer_mouse_detection,RandomFuzzyRules__max_rules_len__3,0.5400795629187555,0.017504424524183028,60,60
+pancreatic_cancer_mouse_detection,RandomFuzzyRules__max_rules_len__4,0.5459187693868912,0.018109283867912936,60,60
+pancreatic_cancer_mouse_detection,RandomFuzzyRules__max_rules_len__5,0.5388239344891681,0.018504468468017825,60,60
+pancreatic_cancer_mouse_detection,RandomFuzzyRules__max_rules_len__6,0.5259631156120351,0.01904774463813126,60,60
+pancreatic_cancer_mouse_detection,RandomFuzzyRules__max_rules_len__7,0.5254982554349755,0.01948244791710745,60,60
+pva_revenue_prediction_kddcup98,RandomFuzzyRules__max_rules_len__2,0.9482262859585779,1.9200001447978947,9,9
+pva_revenue_prediction_kddcup98,RandomFuzzyRules__max_rules_len__3,0.9482332259691252,2.118195333880269,9,9
+pva_revenue_prediction_kddcup98,RandomFuzzyRules__max_rules_len__4,0.9482285992793729,2.393748723436147,9,9
+pva_revenue_prediction_kddcup98,RandomFuzzyRules__max_rules_len__5,0.9482193461888406,2.609488388394109,9,9
+pva_revenue_prediction_kddcup98,RandomFuzzyRules__max_rules_len__6,0.9482285993756973,2.757732193218544,9,9
+pva_revenue_prediction_kddcup98,RandomFuzzyRules__max_rules_len__7,0.9482332259691252,2.962070636658205,9,9
+sepsis_prediction,RandomFuzzyRules__max_rules_len__2,0.9819543462367172,16.566270782146603,1,1
+sepsis_prediction,RandomFuzzyRules__max_rules_len__3,0.9819543462367172,18.142036837991327,1,1
+sepsis_prediction,RandomFuzzyRules__max_rules_len__4,0.9819543462367172,17.998340910067782,1,1
+sepsis_prediction,RandomFuzzyRules__max_rules_len__5,0.9819543462367172,18.806128568015996,1,1
+sepsis_prediction,RandomFuzzyRules__max_rules_len__6,0.9819543462367172,18.60739773698151,1,1
+sepsis_prediction,RandomFuzzyRules__max_rules_len__7,0.9819543462367172,19.31807347899303,1,1
+south_africa_coronary_heart_disease,RandomFuzzyRules__max_rules_len__2,0.7136363636363636,0.016705126466695176,60,60
+south_africa_coronary_heart_disease,RandomFuzzyRules__max_rules_len__3,0.7101731601731601,0.01704429670935492,60,60
+south_africa_coronary_heart_disease,RandomFuzzyRules__max_rules_len__4,0.7010822510822511,0.01833798063841333,60,60
+south_africa_coronary_heart_disease,RandomFuzzyRules__max_rules_len__5,0.7043290043290044,0.020132936203541802,60,60
+south_africa_coronary_heart_disease,RandomFuzzyRules__max_rules_len__6,0.7178571428571429,0.022116282861679746,60,60
+south_africa_coronary_heart_disease,RandomFuzzyRules__max_rules_len__7,0.7095238095238094,0.024579643574543238,60,60
+wids_diabetes_mellitus,RandomFuzzyRules__max_rules_len__2,0.7949088438159475,1.726622936496925,9,9
+wids_diabetes_mellitus,RandomFuzzyRules__max_rules_len__3,0.7946916080207949,1.8447971709538251,9,9
+wids_diabetes_mellitus,RandomFuzzyRules__max_rules_len__4,0.7949768912001961,1.9378712653027226,9,9
+wids_diabetes_mellitus,RandomFuzzyRules__max_rules_len__5,0.7948852873065206,2.035456432003735,9,9
+wids_diabetes_mellitus,RandomFuzzyRules__max_rules_len__6,0.7947596581794075,2.1005527484748097,9,9
+wids_diabetes_mellitus,RandomFuzzyRules__max_rules_len__7,0.7949873605407324,2.0862801659645305,9,9
