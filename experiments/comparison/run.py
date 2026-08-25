@@ -1,22 +1,3 @@
-"""Compare six interpretable classifiers on selected binary UCI datasets.
-
-The benchmark uses the common UCI loader and fold-local preprocessing defined
-in ``experiments.utils``. All estimators are evaluated with the same 10-fold
-stratified cross-validation splits.
-
-Outputs are written to ``results/comparison``:
-
-- ``fold_results.csv``
-- ``errors.csv`` when errors occur
-- ``dataset_mean_results.csv``
-- ``critical_difference_accuracy.png``
-- ``pairwise_accuracy_rfr_vs_gpr.png``
-- ``mean_fit_time.png``
-
-The fold-level benchmark can be resumed because combinations already present
-in ``fold_results.csv`` are skipped by ``utils.run_benchmark``.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -41,7 +22,6 @@ MODEL_ORDER = [
     "RFR",
     "GPR",
     "FIGS",
-    "RuleFit",
     "HSTree",
     "GreedyRuleList",
 ]
@@ -50,7 +30,6 @@ DISPLAY_LABELS = {
     "RFR": "RFR",
     "GPR": "GPR",
     "FIGS": "FIGS",
-    "RuleFit": "RuleFit",
     "HSTree": "HSTree",
     "GreedyRuleList": "GreedyRuleList",
 }
@@ -74,17 +53,12 @@ def make_estimators(
         FIGSClassifier,
         GreedyRuleListClassifier,
         HSTreeClassifier,
-        RuleFitClassifier,
     )
 
 
     figs_kwargs = _supported_kwargs(
         FIGSClassifier,
         n_jobs=-1, # All threads are used
-        random_state=utils.RANDOM_STATE,
-    )
-    rulefit_kwargs = _supported_kwargs(
-        RuleFitClassifier,
         random_state=utils.RANDOM_STATE,
     )
     hstree_kwargs = _supported_kwargs(
@@ -117,7 +91,6 @@ def make_estimators(
             n_jobs=None, # All threads are used
         ),
         "FIGS": FIGSClassifier(**figs_kwargs),
-        "RuleFit": RuleFitClassifier(**rulefit_kwargs),
         "HSTree": HSTreeClassifier(**hstree_kwargs),
         "GreedyRuleList": GreedyRuleListClassifier(**greedy_kwargs),
     }
@@ -235,7 +208,6 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
         results_file=RESULTS_FILE,
         estimator_order=MODEL_ORDER,
         metrics=("accuracy", "fit_time"),
-        n_splits=utils.N_SPLITS,
     )
     dataset_means.to_csv(DATASET_MEANS_FILE, index=False)
 

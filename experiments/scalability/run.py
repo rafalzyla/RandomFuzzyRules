@@ -72,7 +72,6 @@ MODEL_ORDER = [
     "RFR",
     "GPR",
     "FIGS",
-    "RuleFit",
     "HSTree",
     "GreedyRuleList",
 ]
@@ -203,7 +202,6 @@ def make_estimator_factories(
     from imodels import (
         FIGSClassifier,
         GreedyRuleListClassifier,
-        RuleFitClassifier,
         HSTreeClassifier
     )
 
@@ -217,10 +215,6 @@ def make_estimator_factories(
     figs_kwargs = _supported_kwargs(
         FIGSClassifier,
         n_jobs=N_JOBS,
-        random_state=utils.RANDOM_STATE,
-    )
-    rulefit_kwargs = _supported_kwargs(
-        RuleFitClassifier,
         random_state=utils.RANDOM_STATE,
     )
     hstree_kwargs = _supported_kwargs(
@@ -253,7 +247,6 @@ def make_estimator_factories(
             n_jobs=N_JOBS
         ),
         "FIGS": lambda: FIGSClassifier(**figs_kwargs),
-        "RuleFit": lambda: RuleFitClassifier(**rulefit_kwargs),
         "HSTree": lambda: HSTreeClassifier(**hstree_kwargs),
         "GreedyRuleList": lambda: GreedyRuleListClassifier(**greedy_kwargs),
     }

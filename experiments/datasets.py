@@ -179,7 +179,7 @@ COMPARISON_DATASETS = [
     'heloc',
     'hiva_agnostic',
     'home_credit_default_risk',
-    'home_credit_default_stability',
+    #'home_credit_default_stability', # This dataset was rejected because the FIGS algorithm crash the script
     'hotel_booking_demand',
     'hr_analytics',
     'ieee_fraud_detection',
