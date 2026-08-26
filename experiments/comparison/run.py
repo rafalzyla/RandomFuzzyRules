@@ -24,6 +24,7 @@ MODEL_ORDER = [
     "FIGS",
     "HSTree",
     "GreedyRuleList",
+    "Dummy",
 ]
 
 DISPLAY_LABELS = {
@@ -32,6 +33,7 @@ DISPLAY_LABELS = {
     "FIGS": "FIGS",
     "HSTree": "HSTree",
     "GreedyRuleList": "GreedyRuleList",
+    "Dummy": "Dummy",
 }
 
 ALPHA = 0.05
@@ -54,6 +56,7 @@ def make_estimators(
         GreedyRuleListClassifier,
         HSTreeClassifier,
     )
+    from sklearn.dummy import DummyClassifier
 
 
     figs_kwargs = _supported_kwargs(
@@ -93,6 +96,7 @@ def make_estimators(
         "FIGS": FIGSClassifier(**figs_kwargs),
         "HSTree": HSTreeClassifier(**hstree_kwargs),
         "GreedyRuleList": GreedyRuleListClassifier(**greedy_kwargs),
+        "Dummy": DummyClassifier(strategy="most_frequent", random_state=utils.RANDOM_STATE),
     }
 
 
