@@ -179,11 +179,11 @@ def warm_up_estimators():
     print("Estimator warm-up completed.")
 
 
-def draw_pairwise_accuracy(dataset_means, OUTPUT_DIR):
-    """Compare RFR and GPR dataset-level mean Accuracy values."""
+def draw_pairwise(dataset_means, OUTPUT_DIR):
+    """Compare RFR and GPR dataset-level mean mcc values."""
     matrix = utils.metric_matrix(
         dataset_results=dataset_means,
-        metric="accuracy",
+        metric="mcc",
         estimator_order=["RFR", "GPR"],
         display_labels=None,
     )
@@ -193,14 +193,14 @@ def draw_pairwise_accuracy(dataset_means, OUTPUT_DIR):
         results_b=matrix["GPR"].to_numpy(),
         method_a="RFR",
         method_b="GPR",
-        metric="accuracy",
+        metric="mcc",
         lower_better=False,
         statistic_tests=True,
-        title="RFR versus GPR — Accuracy",
+        title="RFR versus GPR — MCC",
         figsize=(8, 8),
         best_on_top=False,
     )
-    output_file = OUTPUT_DIR / "pairwise_accuracy_rfr_vs_gpr.png"
+    output_file = OUTPUT_DIR / "pairwise_rfr_vs_gpr.png"
     fig.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)
     return matrix
@@ -211,20 +211,28 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
     dataset_means = utils.load_complete_dataset_means(
         results_file=RESULTS_FILE,
         estimator_order=MODEL_ORDER,
-        metrics=("accuracy", "fit_time"),
+        metrics=(
+            "accuracy", 
+            "balanced_accuracy",
+            "auroc",
+            "mcc",
+            "fit_time"
+        ),
     )
     dataset_means.to_csv(DATASET_MEANS_FILE, index=False)
 
-    utils.draw_significance_accuracy(
-        dataset_results=dataset_means,
-        estimator_order=MODEL_ORDER,
-        output_file=OUTPUT_DIR / "critical_difference_accuracy.png",
-        title="Accuracy — critical difference diagram",
-        display_labels=DISPLAY_LABELS,
-        alpha=ALPHA,
-    )
+    for metric in ["accuracy", "balanced_accuracy", "auroc", "mcc"]:
+        utils.draw_significance(
+            dataset_results=dataset_means,
+            estimator_order=MODEL_ORDER,
+            metric=metric,
+            output_file=OUTPUT_DIR / f"significance_{metric}.png",
+            title=f"{metric} — significance diagram",
+            display_labels=DISPLAY_LABELS,
+            alpha=ALPHA,
+        )
 
-    draw_pairwise_accuracy(dataset_means, OUTPUT_DIR)
+    draw_pairwise(dataset_means, OUTPUT_DIR)
 
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,

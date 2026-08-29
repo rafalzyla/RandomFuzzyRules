@@ -11,7 +11,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, LabelEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, matthews_corrcoef, roc_auc_score
 import matplotlib.pyplot as plt
 from aeon.visualisation import plot_boxplot, plot_significance
 from data_foundry.collections import BEYOND_ARENA
@@ -41,6 +41,9 @@ RESULT_COLUMNS = [
     "n_original_features",
     "n_transformed_features",
     "accuracy",
+    "balanced_accuracy",
+    "auroc",
+    "mcc",
     "fit_time",
     "predict_time",
 ]
@@ -305,6 +308,21 @@ def make_output_paths(results_root, experiment_directory):
     }
 
 
+def get_positive_scores(estimator, X_test):
+    if hasattr(estimator, "predict_proba"):
+        return estimator.predict_proba(X_test)[:, 1]
+
+    if hasattr(estimator, "decision_function"):
+        return estimator.decision_function(X_test)
+
+    if hasattr(estimator, "predict"):
+        return estimator.predict(X_test)
+
+    raise AttributeError(
+        "Estimator has neither predict_proba, decision_function, nor predict."
+    )
+
+
 def run_benchmark(datasets, make_estimators, results_file, errors_file):
 
     results_file = Path(results_file)
@@ -462,6 +480,8 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
                         y_pred = estimator.predict(X_test)
                         predict_wall_time = time.perf_counter() - predict_start
 
+                        y_score = get_positive_scores(estimator, X_test)
+
                         predict_time = getattr(estimator, "_benchmark_predict_time_", predict_wall_time)
 
                         record = {
@@ -476,6 +496,9 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
                             "n_original_features": X.shape[1],
                             "n_transformed_features": X_train.shape[1],
                             "accuracy": accuracy_score(y_test, y_pred),
+                            "balanced_accuracy": balanced_accuracy_score(y_test, y_pred),
+                            "auroc": roc_auc_score(y_test, y_score),
+                            "mcc": matthews_corrcoef(y_test, y_pred),
                             "fit_time": fit_time,
                             "predict_time": predict_time,
                         }
@@ -491,7 +514,7 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
                         save_results(results, results_file)
 
                         print(
-                            f" | acc={record['accuracy']:.3f}"
+                            f" | mcc={record['mcc']:.3f}"
                             f" | fit={fit_time:.3f}s"
                             f" | pred={predict_time:.6f}s"
                         )
@@ -731,18 +754,19 @@ def metric_matrix(
     return matrix
 
 
-def draw_significance_accuracy(
+def draw_significance(
     dataset_results,
     estimator_order,
     output_file,
     title,
+    metric="accuracy",
     display_labels=None,
     alpha=0.05,
 ):
     """Create and save an Accuracy critical-difference diagram."""
     matrix = metric_matrix(
         dataset_results=dataset_results,
-        metric="accuracy",
+        metric=metric,
         estimator_order=estimator_order,
         display_labels=display_labels,
     )

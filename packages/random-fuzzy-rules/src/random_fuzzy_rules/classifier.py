@@ -252,61 +252,47 @@ def _score_rules_fast(X, features, states, modifiers, lengths):
 
 
 @njit(cache=True, fastmath=False, parallel=True)
-def _batch_accuracy(X, y, features, states, modifiers, lengths, n_rules, threshold):
-    """Evaluate the training accuracy of a batch of encoded RuleSets.
+def _batch_confusion(X, y, features, states, modifiers, lengths, n_rules, threshold):
+    """Calculate confusion counts for a batch of encoded RuleSets.
 
     Candidate RuleSets are evaluated independently and in parallel. For every
-    observation, the fuzzy score is calculated as the sum of rule activations.
-    The raw score ``s`` is converted to a positive-class probability using
-    
-    ``p = 1 - exp(2 * log(0.5) * s)``.
-    
+    observation, the raw fuzzy score is converted to a positive-class
+    probability using
+
+    ``p = 1 - exp(2 * log(0.5) * score)``.
+
     The predicted class is positive when ``p >= threshold``.
-    
-    Parameters
-    ----------
-    X : ndarray of shape (n_samples, n_features)
-        Dense transformed training matrix with values in [0, 1].
-    
-    y : ndarray of bool, shape (n_samples,)
-        Binary training labels. ``True`` denotes the positive class.
-    
-    features : ndarray of shape
-        (n_candidates, max_rules, max_rule_length)
-        Encoded transformed-feature indices for all candidate RuleSets.
-    
-    states : ndarray of uint8, shape
-        (n_candidates, max_rules, max_rule_length)
-        Encoded condition-state codes.
-    
-    modifiers : ndarray of uint8, shape
-        (n_candidates, max_rules, max_rule_length)
-        Encoded high/low membership exponents.
-    
-    lengths : ndarray of shape (n_candidates, max_rules)
-        Number of active conditions in every rule of every candidate.
-    
-    n_rules : ndarray of shape (n_candidates,)
-        Number of active rules in every candidate RuleSet.
-    
-    threshold : float
-        Positive-class probability threshold.
-    
+
     Returns
     -------
-    accuracies : ndarray of float64, shape (n_candidates,)
-        Training accuracy of every candidate RuleSet.
-    
-    Notes
-    -----
-    The outer candidate loop is parallelized with ``numba.prange``. Candidates
-    must be stored in fixed-shape padded arrays, but only entries indicated by
-    ``n_rules`` and ``lengths`` are evaluated.
+    true_positives : ndarray of int64, shape (n_candidates,)
+        Number of correctly predicted positive observations.
+
+    true_negatives : ndarray of int64, shape (n_candidates,)
+        Number of correctly predicted negative observations.
+
+    false_positives : ndarray of int64, shape (n_candidates,)
+        Number of negative observations predicted as positive.
+
+    false_negatives : ndarray of int64, shape (n_candidates,)
+        Number of positive observations predicted as negative.
+
     """
-    accuracies = np.empty(features.shape[0], dtype=np.float64)
+    n_candidates = features.shape[0]
+
+    true_positives = np.zeros(n_candidates, dtype=np.int64)
+    true_negatives = np.zeros(n_candidates, dtype=np.int64)
+    false_positives = np.zeros(n_candidates, dtype=np.int64)
+    false_negatives = np.zeros(n_candidates, dtype=np.int64)
+    
     log_quarter = 2.0 * np.log(0.5)
-    for c in prange(features.shape[0]):
-        correct = 0
+    
+    for c in prange(n_candidates):
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
+        
         for i in range(X.shape[0]):
             score = 0.0
             for r in range(n_rules[c]):
@@ -328,16 +314,31 @@ def _batch_accuracy(X, y, features, states, modifiers, lengths, n_rules, thresho
                     activation *= value
                 score += activation
             p = 1.0 - np.exp(log_quarter * score)
-            correct += int((p >= threshold) == y[i])
-        accuracies[c] = correct / X.shape[0]
-    return accuracies
+            y_pred = p >= threshold
+            
+            if y_pred:
+                if y[i]:
+                    tp += 1
+                else:
+                    fp += 1
+            else:
+                if y[i]:
+                    fn += 1
+                else:
+                    tn += 1
+                    
+        true_positives[c] = tp
+        true_negatives[c] = tn
+        false_positives[c] = fp
+        false_negatives[c] = fn
+    return true_positives, true_negatives, false_positives, false_negatives
 
 
 @njit(cache=True, fastmath=False, parallel=True)
-def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n_rules):
-    """Evaluate candidate accuracies using a specialized threshold of 0.5.
+def _batch_confusion_threshold_half(X, y, features, states, modifiers, lengths, n_rules):
+    """Calculate confusion counts using the specialized threshold of 0.5.
 
-    This function is equivalent to ``_batch_accuracy`` when the probability
+    This function is equivalent to ``_batch_confusion`` when the probability
     threshold equals 0.5. Under the probability transformation
     
     ``p = 1 - exp(2 * log(0.5) * score)``,
@@ -371,21 +372,35 @@ def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n
     
     n_rules : ndarray of shape (n_candidates,)
         Number of active rules in every candidate.
-    
+
     Returns
     -------
-    accuracies : ndarray of float64, shape (n_candidates,)
-        Training accuracy of every candidate RuleSet.
-    
-    Notes
-    -----
-    The candidate loop is parallelized with ``numba.prange``. This specialized
-    implementation must only be used when the estimator threshold is exactly
-    0.5.
+    true_positives : ndarray of int64, shape (n_candidates,)
+        Number of correctly predicted positive observations.
+
+    true_negatives : ndarray of int64, shape (n_candidates,)
+        Number of correctly predicted negative observations.
+
+    false_positives : ndarray of int64, shape (n_candidates,)
+        Number of negative observations predicted as positive.
+
+    false_negatives : ndarray of int64, shape (n_candidates,)
+        Number of positive observations predicted as negative.
+
     """
-    accuracies = np.empty(features.shape[0], dtype=np.float64)
-    for c in prange(features.shape[0]):
-        correct = 0
+    n_candidates = features.shape[0]
+
+    true_positives = np.zeros(n_candidates, dtype=np.int64)
+    true_negatives = np.zeros(n_candidates, dtype=np.int64)
+    false_positives = np.zeros(n_candidates, dtype=np.int64)
+    false_negatives = np.zeros(n_candidates, dtype=np.int64)
+    
+    for c in prange(n_candidates):
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
+        
         for i in range(X.shape[0]):
             score = 0.0
             for r in range(n_rules[c]):
@@ -408,9 +423,86 @@ def _batch_accuracy_threshold_half(X, y, features, states, modifiers, lengths, n
                 score += activation
                 if score >= 0.5:
                     break
-            correct += int((score >= 0.5) == y[i])
-        accuracies[c] = correct / X.shape[0]
-    return accuracies
+            y_pred = score >= 0.5
+            
+            if y_pred:
+                if y[i]:
+                    tp += 1
+                else:
+                    fp += 1
+            else:
+                if y[i]:
+                    fn += 1
+                else:
+                    tn += 1
+                    
+        true_positives[c] = tp
+        true_negatives[c] = tn
+        false_positives[c] = fp
+        false_negatives[c] = fn
+    return true_positives, true_negatives, false_positives, false_negatives
+
+@njit(
+    cache=True,
+    fastmath=False,
+    parallel=True,
+)
+def _batch_mcc_from_confusion(true_positives, true_negatives, false_positives, false_negatives):
+    """Calculate MCC values from candidate confusion-matrix counts.
+
+    Parameters
+    ----------
+    true_positives : ndarray of int64, shape (n_candidates,)
+        True-positive counts for all candidate RuleSets.
+
+    true_negatives : ndarray of int64, shape (n_candidates,)
+        True-negative counts for all candidate RuleSets.
+
+    false_positives : ndarray of int64, shape (n_candidates,)
+        False-positive counts for all candidate RuleSets.
+
+    false_negatives : ndarray of int64, shape (n_candidates,)
+        False-negative counts for all candidate RuleSets.
+
+    Returns
+    -------
+    objective_values : ndarray of float64, shape (n_candidates,)
+        Matthews correlation coefficient for every candidate. A candidate
+        receives zero when the MCC denominator is zero.
+
+    Notes
+    -----
+    The candidate loop is parallelized with ``numba.prange``.
+
+    Confusion counts are converted to floating-point values before
+    multiplication. This prevents integer overflow when evaluating large
+    training sets.
+    """
+    n_candidates = true_positives.shape[0]
+
+    objective_values = np.empty(n_candidates, dtype=np.float64)
+
+    for candidate_index in prange(n_candidates):
+        tp = float(true_positives[candidate_index])
+        tn = float(true_negatives[candidate_index])
+        fp = float(false_positives[candidate_index])
+        fn = float(false_negatives[candidate_index])
+
+        numerator = tp * tn - fp * fn
+
+        denominator_squared = (
+            (tp + fp)
+            * (tp + fn)
+            * (tn + fp)
+            * (tn + fn)
+        )
+
+        if denominator_squared > 0.0:
+            objective_values[candidate_index] = numerator / np.sqrt(denominator_squared)
+        else:
+            objective_values[candidate_index] = 0.0
+
+    return objective_values
 
 @njit(cache=True, fastmath=False, inline="always", forceinline=True)
 def _sample_structure_size(max_value, sampling_type):
@@ -1190,6 +1282,27 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         ``preprocessed=True``, the transformation is applied to columns identified
         by ``continuous_features``. When ``preprocessed=False``, it is applied to
         numerical columns identified by the internal preprocessing logic.
+
+    objective_fun : callable or None, default=None
+        Optional function used to evaluate candidate RuleSets from their binary
+        confusion-matrix counts. The callable must have the signature
+    
+        ``objective_fun(tp, tn, fp, fn) -> float``
+    
+        where ``tp``, ``tn``, ``fp``, and ``fn`` are non-negative integer counts.
+        Higher returned values are interpreted as better candidate performance.
+    
+        If ``None``, the Matthews correlation coefficient is calculated by a
+        dedicated Numba-compiled batch function. Candidates for which the MCC
+        denominator is zero receive an objective value of zero.
+    
+        A custom callable is executed once per candidate outside the
+        Numba-compiled evaluation kernel and does not need to be Numba-compatible.
+        It must return one finite real scalar value for every candidate.
+    
+        The objective must depend only on thresholded binary predictions. Metrics
+        requiring continuous decision scores or probabilities, such as ROC AUC,
+        are not supported by this interface.
     
     random_state : int or None, default=None
         Seed controlling candidate generation. A fixed integer makes sampling
@@ -1245,9 +1358,6 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     rule_stats_ : list of RuleStats
         Descriptive statistics for selected positive-class rules.
     
-    train_acc_ : float
-        Training accuracy of the selected RuleSet.
-    
     sampling_time_ : float
         Candidate-generation time in seconds.
     
@@ -1286,6 +1396,10 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     quantile_feature_indices_ : ndarray of int
         Indices of transformed continuous columns to which
         ``quantile_transformer_`` is applied in preprocessed mode.
+
+    objective_value_ : float
+        Training objective value of the selected RuleSet. When
+        ``objective_fun=None``, this is the Matthews correlation coefficient.
     
     Notes
     -----
@@ -1325,6 +1439,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         categorical_feature_groups: Optional[Sequence[Sequence[int]]] = None,
         preprocessed: bool = False,
         quantile_transform=None,
+        objective_fun=None,
         random_state: Optional[int] = None,
         verbose: int = 0,
     ):
@@ -1344,6 +1459,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         self.categorical_feature_groups = categorical_feature_groups
         self.preprocessed = preprocessed
         self.quantile_transform = quantile_transform
+        self.objective_fun = objective_fun
         self.random_state = random_state
         self.verbose = verbose
 
@@ -1494,18 +1610,37 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
 
         start = time.perf_counter()
         if self.threshold == 0.5:
-            accuracies = _batch_accuracy_threshold_half(Xt, y_binary, features, states, modifiers, lengths, n_rules)
+            confusion_counts = _batch_confusion_threshold_half(
+                    Xt,
+                    y_binary,
+                    features,
+                    states,
+                    modifiers,
+                    lengths,
+                    n_rules,
+            )
         else:
-            accuracies = _batch_accuracy(Xt, y_binary, features, states, modifiers, lengths, n_rules, self.threshold)
+            confusion_counts = _batch_confusion(
+                Xt,
+                y_binary,
+                features,
+                states,
+                modifiers,
+                lengths,
+                n_rules,
+                self.threshold,
+            )
+
+        objective_values = self._calculate_objective_values(*confusion_counts)
         self.evaluation_time_ = time.perf_counter() - start
         best_index = self._select_best_encoded(
-            accuracies, modifiers, lengths, n_rules
+            objective_values, modifiers, lengths, n_rules
         )
         self.rules_struct_ = self._decode_ruleset(
             features[best_index], states[best_index], modifiers[best_index],
             lengths[best_index], int(n_rules[best_index])
         )
-        self.train_acc_ = float(accuracies[best_index])
+        self.objective_value_ = float(objective_values[best_index])
         self.rule_stats_ = self._compute_rule_stats(Xt, y_binary, self.rules_struct_)
         self.rules_ = self._format_rules(self.rules_struct_, self.rule_stats_)
         self._compiled_rule_arrays_ = self._encode_single_ruleset(self.rules_struct_)
@@ -1771,11 +1906,104 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
         return features, states, modifiers, lengths, n_rules
 
-    @staticmethod
-    def _select_best_encoded(accuracies, modifiers, lengths, n_rules):
-        """Select the best encoded candidate by Accuracy and complexity.
+    def _calculate_objective_values(
+        self,
+        true_positives,
+        true_negatives,
+        false_positives,
+        false_negatives,
+    ):
+        """Calculate candidate objective values from confusion-matrix counts.
 
-        Candidates are compared first by training Accuracy. Accuracy ties are resolved
+        Parameters
+        ----------
+        true_positives : ndarray of shape (n_candidates,)
+            Number of true-positive predictions produced by each candidate RuleSet.
+        
+        true_negatives : ndarray of shape (n_candidates,)
+            Number of true-negative predictions produced by each candidate RuleSet.
+        
+        false_positives : ndarray of shape (n_candidates,)
+            Number of false-positive predictions produced by each candidate RuleSet.
+        
+        false_negatives : ndarray of shape (n_candidates,)
+            Number of false-negative predictions produced by each candidate RuleSet.
+        
+        Returns
+        -------
+        objective_values : ndarray of float64, shape (n_candidates,)
+            Objective-function value for every candidate. Larger values indicate
+            better candidate performance.
+        
+        Raises
+        ------
+        ValueError
+            If the custom ``objective_fun`` cannot be converted to a real scalar for
+            any candidate.
+        
+        ValueError
+            If the custom ``objective_fun`` returns a non-finite value for one or more
+            candidates.
+        
+        Notes
+        -----
+        If ``objective_fun`` is ``None``, the Matthews correlation coefficient is
+        calculated for all candidates by the dedicated Numba-compiled
+        ``_batch_mcc_from_confusion`` function. Candidates for which the MCC
+        denominator is zero receive an objective value of zero.
+        
+        If a custom objective function is supplied, it is called once per candidate
+        with the signature
+        
+        ``objective_fun(tp, tn, fp, fn) -> float``.
+        
+        The custom function is executed outside Numba and must return one finite real
+        scalar. Objective values are maximized during candidate selection.
+        """
+        if self.objective_fun is None:
+            return _batch_mcc_from_confusion(
+                true_positives,
+                true_negatives,
+                false_positives,
+                false_negatives,
+            )
+    
+        objective_values = np.empty(true_positives.shape[0], dtype=np.float64)
+    
+        for candidate_index in range(true_positives.shape[0]):
+            value = self.objective_fun(
+                true_positives[candidate_index],
+                true_negatives[candidate_index],
+                false_positives[candidate_index],
+                false_negatives[candidate_index],
+            )
+    
+            try:
+                objective_values[candidate_index] = float(value)
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    "objective_fun must return one real scalar "
+                    "value for each candidate. "
+                    f"Candidate {candidate_index} returned "
+                    f"{value!r}."
+                ) from error
+    
+        invalid_indices = np.flatnonzero(~np.isfinite(objective_values))
+    
+        if invalid_indices.size > 0:
+            raise ValueError(
+                "objective_fun returned non-finite values "
+                "for candidate indices: "
+                f"{invalid_indices[:10].tolist()}."
+            )
+    
+        return objective_values
+
+    @staticmethod
+    def _select_best_encoded(objective_values, modifiers, lengths, n_rules):
+        """Select the best encoded candidate by objective value and complexity.
+
+        Candidates are compared first by objective value. Ties are resolved
         lexicographically using:
         
         1. total number of active conditions,
@@ -1784,8 +2012,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         
         Parameters
         ----------
-        accuracies : ndarray of float, shape (n_candidates,)
-            Training Accuracy of every candidate.
+        objective_values : ndarray of float, shape (n_candidates,)
+            Training objective value of every candidate.
         
         modifiers : ndarray of uint8, shape (n_candidates, max_rules, max_rule_length)
             Encoded condition modifiers.
@@ -1814,12 +2042,12 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             for literal_index in range(lengths[0, rule_index]):
                 best_modifier_sum += int(modifiers[0, rule_index, literal_index])
     
-        for candidate_index in range(1, len(accuracies)):
-            better_accuracy = accuracies[candidate_index] > accuracies[best] + 1e-15
+        for candidate_index in range(1, len(objective_values)):
+            better_objective = objective_values[candidate_index] > objective_values[best] + 1e-15
     
-            same_accuracy = abs(accuracies[candidate_index] - accuracies[best]) <= 1e-15
+            same_objective = abs(objective_values[candidate_index] - objective_values[best]) <= 1e-15
     
-            if better_accuracy:
+            if better_objective:
                 best = candidate_index
     
                 best_modifier_sum = 0
@@ -1828,7 +2056,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
                     for literal_index in range(lengths[best, rule_index]):
                         best_modifier_sum += int(modifiers[best, rule_index, literal_index])
     
-            elif same_accuracy:
+            elif same_objective:
                 candidate_modifier_sum = 0
     
                 for rule_index in range(n_rules[candidate_index]):
@@ -2104,6 +2332,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         ValueError
             If ``quantile_transform`` is not ``None``, ``"uniform"``,
             or ``"normal"``.
+
+        ValueError
+            If ``objective_fun`` is neither callable nor ``None``.
         
         Notes
         -----
@@ -2131,6 +2362,9 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
 
         if self.quantile_transform not in {None, "uniform", "normal"}:
             raise ValueError("quantile_transform must be None, 'uniform', or 'normal'.")
+
+        if self.objective_fun is not None and not callable(self.objective_fun):
+            raise ValueError("objective_fun must be callable or None.")
 
     def _configure_preprocessed_metadata(self, n_features, names):
         """Validate and store metadata for externally preprocessed input.

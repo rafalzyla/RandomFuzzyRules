@@ -6,15 +6,6 @@ ablation results. Evaluation uses the same development datasets as the
 ablation study and ten-fold stratified cross-validation provided by
 ``experiments.utils.run_benchmark``.
 
-Outputs are stored under
-``results/ablation/default_configuration_validation``:
-
-- ``fold_results.csv``;
-- ``errors.csv`` when errors occur;
-- ``dataset_mean_results.csv``;
-- ``pairwise_accuracy.png``;
-- ``mean_fit_time.png``.
-
 The benchmark supports resuming because completed dataset/fold/estimator
 combinations are read from ``fold_results.csv`` and skipped.
 """
@@ -109,11 +100,11 @@ def warm_up_numba():
     print("Numba warm-up completed.")
 
 
-def draw_pairwise_accuracy(dataset_means, OUTPUT_DIR):
-    """Create a paired Accuracy scatter for baseline and selected defaults."""
+def draw_pairwise(dataset_means, OUTPUT_DIR):
+    """Create a paired mcc scatter for baseline and selected defaults."""
     matrix = utils.metric_matrix(
         dataset_results=dataset_means,
-        metric="accuracy",
+        metric="mcc",
         estimator_order=ESTIMATOR_ORDER,
         display_labels=None,
     )
@@ -123,14 +114,14 @@ def draw_pairwise_accuracy(dataset_means, OUTPUT_DIR):
         results_b=matrix[SELECTED_NAME].to_numpy(),
         method_a=DISPLAY_LABELS[BASELINE_NAME],
         method_b=DISPLAY_LABELS[SELECTED_NAME],
-        metric="accuracy",
+        metric="mcc",
         lower_better=False,
         statistic_tests=True,
-        title="Baseline versus selected RFR defaults — Accuracy",
+        title="Baseline versus selected RFR defaults — MCC",
         figsize=(8, 8),
         best_on_top=False,
     )
-    fig.savefig(OUTPUT_DIR / "pairwise_accuracy.png", dpi=300, bbox_inches="tight")
+    fig.savefig(OUTPUT_DIR / "pairwise.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
     return matrix
 
@@ -140,12 +131,18 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE):
         utils.load_complete_dataset_means(
             results_file=RESULTS_FILE,
             estimator_order=ESTIMATOR_ORDER,
-            metrics=("accuracy", "fit_time"),
+            metrics=(
+                "accuracy", 
+                "balanced_accuracy",
+                "auroc",
+                "mcc",
+                "fit_time"
+            ),
         )
     )
     dataset_means.to_csv(OUTPUT_DIR / "dataset_mean_results.csv", index=False)
 
-    draw_pairwise_accuracy(dataset_means, OUTPUT_DIR)
+    draw_pairwise(dataset_means, OUTPUT_DIR)
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,
         estimator_order=ESTIMATOR_ORDER,

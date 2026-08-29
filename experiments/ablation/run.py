@@ -3,11 +3,6 @@
 Each key in ABLATION_CONFIGS defines a separate study. For a selected study,
 all parameters not varied retain their values from BASELINE_DEFAULTS. Results and errors
 are written to separate CSV files under results/ablation/<study_name>/.
-The same folder also receives:
-
-- critical_difference_accuracy.png
-- mean_fit_time.png
-- dataset_mean_results.csv
 
 The script supports resuming: run_benchmark skips estimator/fold combinations
 already present in the study-specific fold_results.csv file.
@@ -51,7 +46,7 @@ def _value_label(study_name: str, value: Any) -> str:
             value["sampling_type_number"],
             value["sampling_type_length"],
         )
-    return f"{study_name}={value}"
+    return str(value)
 
 
 def _estimator_name(study_name: str, value: Any) -> str:
@@ -157,12 +152,16 @@ def generate_study_outputs(OUTPUT_ROOT: Path, study_name: str) -> None:
         for value in ABLATION_CONFIGS[study_name]
     ]
     
-    dataset_means = (
-        utils.load_complete_dataset_means(
+    dataset_means = utils.load_complete_dataset_means(
             results_file=results_file,
             estimator_order=estimator_order,
-            metrics=("accuracy", "fit_time"),
-        )
+            metrics=(
+            "accuracy", 
+            "balanced_accuracy",
+            "auroc",
+            "mcc",
+            "fit_time"
+        ),
     )
 
     dataset_means.to_csv(
@@ -171,15 +170,17 @@ def generate_study_outputs(OUTPUT_ROOT: Path, study_name: str) -> None:
     )
     
     display_labels = _display_labels(study_name)
-    
-    utils.draw_significance_accuracy(
-        dataset_results=dataset_means,
-        estimator_order=estimator_order,
-        output_file=study_dir / "critical_difference_accuracy.png",
-        title=f"Accuracy — critical difference diagram — {study_name}",
-        display_labels=display_labels,
-        alpha=ALPHA,
-    )
+
+    for metric in ["accuracy", "balanced_accuracy", "auroc", "mcc"]:
+        utils.draw_significance(
+            dataset_results=dataset_means,
+            estimator_order=estimator_order,
+            metric=metric,
+            output_file=study_dir / f"significance_{metric}.png",
+            title=f"{metric} — significance diagram — {study_name}",
+            display_labels=display_labels,
+            alpha=ALPHA,
+        )
     
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,
