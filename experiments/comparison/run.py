@@ -179,11 +179,11 @@ def warm_up_estimators():
     print("Estimator warm-up completed.")
 
 
-def draw_pairwise(dataset_means, OUTPUT_DIR):
+def draw_pairwise(dataset_means, metric, OUTPUT_DIR):
     """Compare RFR and GPR dataset-level mean mcc values."""
     matrix = utils.metric_matrix(
         dataset_results=dataset_means,
-        metric="mcc",
+        metric=metric,
         estimator_order=["RFR", "GPR"],
         display_labels=None,
     )
@@ -193,14 +193,14 @@ def draw_pairwise(dataset_means, OUTPUT_DIR):
         results_b=matrix["GPR"].to_numpy(),
         method_a="RFR",
         method_b="GPR",
-        metric="mcc",
+        metric=metric,
         lower_better=False,
         statistic_tests=True,
-        title="RFR versus GPR — MCC",
+        title=f"RFR versus GPR — {metric}",
         figsize=(8, 8),
         best_on_top=False,
     )
-    output_file = OUTPUT_DIR / "pairwise_rfr_vs_gpr.png"
+    output_file = OUTPUT_DIR / f"pairwise_rfr_vs_gpr_{metric}.png"
     fig.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)
     return matrix
@@ -232,7 +232,7 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
             alpha=ALPHA,
         )
 
-    draw_pairwise(dataset_means, OUTPUT_DIR)
+        draw_pairwise(dataset_means, metric, OUTPUT_DIR)
 
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,
