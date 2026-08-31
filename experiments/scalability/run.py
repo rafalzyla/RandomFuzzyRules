@@ -64,8 +64,8 @@ BASE_N_NUMERICAL = 60
 BASE_N_CATEGORICAL = 10
 CATEGORIES_PER_FEATURE = 4
 
-SAMPLE_VALUES = np.logspace(7, 16, 10, base=2).astype(int)
-FEATURE_VALUES = np.logspace(2, 10, 9, base=2).astype(int)
+SAMPLE_VALUES = np.logspace(7, 17, 11, base=2).astype(int)
+FEATURE_VALUES = np.logspace(2, 11, 10, base=2).astype(int)
 CANDIDATE_VALUES = np.array([1_000, 5_000, 10_000, 25_000, 50_000, 100_000], dtype=int)
 
 MODEL_ORDER = [
