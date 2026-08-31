@@ -101,10 +101,10 @@ def warm_up_numba():
 
 
 def draw_pairwise(dataset_means, OUTPUT_DIR):
-    """Create a paired mcc scatter for baseline and selected defaults."""
+    """Create a paired accuracy scatter for baseline and selected defaults."""
     matrix = utils.metric_matrix(
         dataset_results=dataset_means,
-        metric="mcc",
+        metric="accuracy",
         estimator_order=ESTIMATOR_ORDER,
         display_labels=None,
     )
@@ -114,10 +114,10 @@ def draw_pairwise(dataset_means, OUTPUT_DIR):
         results_b=matrix[SELECTED_NAME].to_numpy(),
         method_a=DISPLAY_LABELS[BASELINE_NAME],
         method_b=DISPLAY_LABELS[SELECTED_NAME],
-        metric="mcc",
+        metric="accuracy",
         lower_better=False,
         statistic_tests=True,
-        title="Baseline versus selected RFR defaults — MCC",
+        title="Baseline versus selected RFR defaults — accuracy",
         figsize=(8, 8),
         best_on_top=False,
     )

@@ -447,8 +447,8 @@ def _batch_confusion_threshold_half(X, y, features, states, modifiers, lengths, 
     fastmath=False,
     parallel=True,
 )
-def _batch_mcc_from_confusion(true_positives, true_negatives, false_positives, false_negatives):
-    """Calculate MCC values from candidate confusion-matrix counts.
+def _batch_acc_from_confusion(true_positives, true_negatives, false_positives, false_negatives):
+    """Calculate accuracy from candidate confusion-matrix counts.
 
     Parameters
     ----------
@@ -467,40 +467,28 @@ def _batch_mcc_from_confusion(true_positives, true_negatives, false_positives, f
     Returns
     -------
     objective_values : ndarray of float64, shape (n_candidates,)
-        Matthews correlation coefficient for every candidate. A candidate
-        receives zero when the MCC denominator is zero.
+        Accuracy for every candidate. 
 
     Notes
     -----
     The candidate loop is parallelized with ``numba.prange``.
-
-    Confusion counts are converted to floating-point values before
-    multiplication. This prevents integer overflow when evaluating large
-    training sets.
     """
     n_candidates = true_positives.shape[0]
+
+    n_samples = (
+        true_positives[0]
+        + true_negatives[0]
+        + false_positives[0]
+        + false_negatives[0]
+    )
 
     objective_values = np.empty(n_candidates, dtype=np.float64)
 
     for candidate_index in prange(n_candidates):
-        tp = float(true_positives[candidate_index])
-        tn = float(true_negatives[candidate_index])
-        fp = float(false_positives[candidate_index])
-        fn = float(false_negatives[candidate_index])
+        tp = true_positives[candidate_index]
+        tn = true_negatives[candidate_index]
 
-        numerator = tp * tn - fp * fn
-
-        denominator_squared = (
-            (tp + fp)
-            * (tp + fn)
-            * (tn + fp)
-            * (tn + fn)
-        )
-
-        if denominator_squared > 0.0:
-            objective_values[candidate_index] = numerator / np.sqrt(denominator_squared)
-        else:
-            objective_values[candidate_index] = 0.0
+        objective_values[candidate_index] = (tp + tn) / n_samples
 
     return objective_values
 
@@ -1292,9 +1280,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         where ``tp``, ``tn``, ``fp``, and ``fn`` are non-negative integer counts.
         Higher returned values are interpreted as better candidate performance.
     
-        If ``None``, the Matthews correlation coefficient is calculated by a
-        dedicated Numba-compiled batch function. Candidates for which the MCC
-        denominator is zero receive an objective value of zero.
+        If ``None``, the accuracy score is calculated by a dedicated Numba-compiled 
+        batch function. 
     
         A custom callable is executed once per candidate outside the
         Numba-compiled evaluation kernel and does not need to be Numba-compatible.
@@ -1399,7 +1386,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
 
     objective_value_ : float
         Training objective value of the selected RuleSet. When
-        ``objective_fun=None``, this is the Matthews correlation coefficient.
+        ``objective_fun=None``, this is the accuracy score.
     
     Notes
     -----
@@ -1947,10 +1934,8 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         
         Notes
         -----
-        If ``objective_fun`` is ``None``, the Matthews correlation coefficient is
-        calculated for all candidates by the dedicated Numba-compiled
-        ``_batch_mcc_from_confusion`` function. Candidates for which the MCC
-        denominator is zero receive an objective value of zero.
+        If ``objective_fun`` is ``None``, the accuracy score is calculated for all 
+        candidates by the dedicated Numba-compiled ``_batch_acc_from_confusion`` function. 
         
         If a custom objective function is supplied, it is called once per candidate
         with the signature
@@ -1960,8 +1945,18 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         The custom function is executed outside Numba and must return one finite real
         scalar. Objective values are maximized during candidate selection.
         """
+        candidate_sample_counts = (
+            true_positives
+            + true_negatives
+            + false_positives
+            + false_negatives
+        )
+        
+        if np.unique(candidate_sample_counts).size != 1:
+            raise ValueError("Every candidate must be evaluated on the same number of samples.")
+        
         if self.objective_fun is None:
-            return _batch_mcc_from_confusion(
+            return _batch_acc_from_confusion(
                 true_positives,
                 true_negatives,
                 false_positives,

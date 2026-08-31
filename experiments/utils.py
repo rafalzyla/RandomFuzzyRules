@@ -821,6 +821,17 @@ def draw_mean_fit_time(
     ax.set_xlabel("Configuration")
     ax.set_yscale("linear")
 
+    ax.set_axisbelow(True)
+
+    ax.grid(
+        visible=True,
+        axis="y",
+        which="major",
+        linestyle="--",
+        linewidth=0.7,
+        alpha=0.5,
+    )
+
     output_file = Path(output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_file, dpi=300, bbox_inches="tight")

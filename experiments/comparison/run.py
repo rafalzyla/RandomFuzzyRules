@@ -6,6 +6,7 @@ import inspect
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numba
 import numpy as np
 import pandas as pd
@@ -206,6 +207,150 @@ def draw_pairwise(dataset_means, metric, OUTPUT_DIR):
     return matrix
 
 
+def draw_metric_radar(
+    dataset_means,
+    estimator_order,
+    output_file,
+    title,
+    display_labels=None,
+):
+    """Create and save a radar chart of mean predictive performance.
+
+    Accuracy, balanced Accuracy, and AUROC are displayed on their original
+    ``[0, 1]`` scales. MCC is linearly mapped from ``[-1, 1]`` to ``[0, 1]``
+    using ``(MCC + 1) / 2``.
+    """
+    metrics = [
+        "accuracy",
+        "balanced_accuracy",
+        "auroc",
+        "mcc",
+    ]
+
+    metric_labels = [
+        "Accuracy",
+        "Balanced\nAccuracy",
+        "AUROC",
+        "MCC\n(scaled)",
+    ]
+
+    estimator_order = list(estimator_order)
+
+    metric_means = (
+        dataset_means
+        .groupby("estimator")[metrics]
+        .mean()
+        .reindex(estimator_order)
+    )
+
+    radar_values = metric_means.copy()
+
+    radar_values["mcc"] = (radar_values["mcc"] + 1.0) / 2.0
+
+    angles = np.linspace(
+        0.0,
+        2.0 * np.pi,
+        len(metrics),
+        endpoint=False,
+    )
+
+    closed_angles = np.concatenate([
+        angles,
+        angles[:1],
+    ])
+
+    colors = sns.color_palette("colorblind", n_colors=len(estimator_order))
+
+    fig, ax = plt.subplots(
+        figsize=(9, 8),
+        subplot_kw={"projection": "polar"},
+    )
+
+    # Place Accuracy at the top and arrange the remaining metrics clockwise.
+    ax.set_theta_offset(np.pi / 2.0)
+    ax.set_theta_direction(-1)
+
+    ax.set_xticks(angles)
+    ax.set_xticklabels(metric_labels, fontsize=12)
+
+    ax.set_ylim(0.0, 1.0)
+    ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_yticklabels(
+        ["0.2", "0.4", "0.6", "0.8", "1.0"],
+        fontsize=11,
+    )
+    ax.set_rlabel_position(22.5)
+
+    ax.grid(
+        visible=True,
+        linestyle="--",
+        linewidth=0.7,
+        alpha=0.55,
+    )
+
+    for estimator, color in zip(estimator_order, colors):
+        values = radar_values.loc[
+            estimator,
+            metrics,
+        ].to_numpy(dtype=np.float64)
+
+        closed_values = np.concatenate([values, values[:1]])
+
+        label = (
+            display_labels.get(estimator, estimator)
+            if display_labels is not None
+            else estimator
+        )
+
+        ax.plot(
+            closed_angles,
+            closed_values,
+            color=color,
+            linewidth=2.0,
+            marker="o",
+            markersize=5,
+            label=label,
+        )
+
+        ax.fill(
+            closed_angles,
+            closed_values,
+            color=color,
+            alpha=0.08,
+        )
+
+    ax.set_title(title, fontsize=16, pad=24)
+
+    ax.legend(
+        loc="upper left",
+        bbox_to_anchor=(1.05, 1.05),
+        title="Classifier",
+        frameon=True,
+    )
+
+    fig.text(
+        0.5,
+        0.02,
+        "MCC is mapped from [-1, 1] to [0, 1] using (MCC + 1) / 2.",
+        ha="center",
+        fontsize=11,
+    )
+
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    fig.savefig(
+        output_file,
+        dpi=300,
+        bbox_inches="tight",
+        pad_inches=0.25,
+    )
+
+    plt.close(fig)
+
+    return metric_means
+
+
 def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
     """Aggregate complete folds and generate all comparison figures."""
     dataset_means = utils.load_complete_dataset_means(
@@ -233,6 +378,14 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
         )
 
         draw_pairwise(dataset_means, metric, OUTPUT_DIR)
+
+    draw_metric_radar(
+        dataset_means=dataset_means,
+        estimator_order=MODEL_ORDER,
+        output_file=OUTPUT_DIR / "metric_radar.png",
+        title="Mean predictive performance of classifiers",
+        display_labels=DISPLAY_LABELS,
+    )
 
     utils.draw_mean_fit_time(
         dataset_results=dataset_means,
