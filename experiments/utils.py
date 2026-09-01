@@ -514,7 +514,7 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
                         save_results(results, results_file)
 
                         print(
-                            f" | mcc={record['mcc']:.3f}"
+                            f" | acc={record['accuracy']:.3f}"
                             f" | fit={fit_time:.3f}s"
                             f" | pred={predict_time:.6f}s"
                         )
