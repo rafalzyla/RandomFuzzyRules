@@ -25,17 +25,23 @@ integrates with standard scikit-learn workflows.
 ## Basic usage
 
 ```python
+import numpy as np
 from random_fuzzy_rules import RandomFuzzyRulesClassifier
 
+X_train = np.random.random((100, 10))
+y_train = np.random.randint(0, 2, size=100)
+X_test = np.random.random((50, 10))
+
 classifier = RandomFuzzyRulesClassifier(
-    max_rules=6,
-    max_rules_len=3,
-    max_literal_repetitions=3,
+    max_rules=2,
+    max_rules_len=2,
+    max_literal_repetitions=1,
     threshold=0.5,
-    n_candidates=10_000,
+    n_candidates=1_000,
     max_sampling_attempts=20_000,
     sampling_type_number=1,
     sampling_type_length=2,
+    quantile_transform=None,
     preprocessed=True,
     continuous_features="all",
     random_state=42,
@@ -81,14 +87,15 @@ The default configuration selected through the accompanying ablation study is:
 
 ```python
 {
-    "max_rules": 6,
-    "max_rules_len": 3,
-    "max_literal_repetitions": 3,
+    "max_rules": 2,
+    "max_rules_len": 2,
+    "max_literal_repetitions": 1,
     "threshold": 0.5,
-    "n_candidates": 10_000,
+    "n_candidates": 1_000,
     "max_sampling_attempts": 20_000,
     "sampling_type_number": 1,
     "sampling_type_length": 2,
+    "quantile_transform": None,
 }
 ```
 

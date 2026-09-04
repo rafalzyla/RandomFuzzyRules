@@ -1173,10 +1173,10 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
     
     Parameters
     ----------
-    max_rules : int, default=6
+    max_rules : int, default=2
         Maximum number of rules in one candidate RuleSet.
     
-    max_rules_len : int, default=6
+    max_rules_len : int, default=2
         Maximum number of conditions in one rule. This parameter is used unless
         the deprecated alias ``max_rule_len`` is provided.
     
@@ -1184,7 +1184,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         Optional alias overriding ``max_rules_len``. Retained for API
         compatibility.
     
-    max_literal_repetitions : int, default=3
+    max_literal_repetitions : int, default=1
         Maximum exponent allowed for high and low memberships:
     
         - 1: High or Low,
@@ -1196,10 +1196,10 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         specialized evaluation kernel avoids the probability transformation and
         may stop evaluating rules after the raw score reaches 0.5.
     
-    n_candidates : int, default=20000
+    n_candidates : int, default=1000
         Target number of valid unique candidate RuleSets.
     
-    max_sampling_attempts : int, default=1000000
+    max_sampling_attempts : int, default=20000
         Maximum number of raw candidate-generation attempts. Fewer than
         ``n_candidates`` candidates may be evaluated if the limit is reached.
     
@@ -1209,7 +1209,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         - 1: discrete uniform;
         - 2: exponential/log-uniform, favoring smaller RuleSets.
     
-    sampling_type_length : {1, 2}, default=1
+    sampling_type_length : {1, 2}, default=2
         Distribution used to sample individual rule lengths:
     
         - 1: discrete uniform;
@@ -1410,15 +1410,15 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
 
     def __init__(
         self,
-        max_rules: int = 6,
-        max_rules_len: int = 6,
+        max_rules: int = 2,
+        max_rules_len: int = 2,
         max_rule_len: Optional[int] = None,
-        max_literal_repetitions: int = 3,
+        max_literal_repetitions: int = 1,
         threshold: float = 0.5,
-        n_candidates: int = 20_000,
-        max_sampling_attempts: int = 1_000_000,
+        n_candidates: int = 1_000,
+        max_sampling_attempts: int = 20_000,
         sampling_type_number: int = 1,
-        sampling_type_length: int = 1,
+        sampling_type_length: int = 2,
         class_names: Optional[Sequence[str]] = None,
         feature_names: Optional[Sequence[str]] = None,
         categorical_features: Optional[Union[Sequence[int], Sequence[bool], Sequence[str]]] = None,
