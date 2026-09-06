@@ -52,7 +52,15 @@ def main():
                 with contextlib.redirect_stdout(sys.stderr):
                     model.fit(X, y)
                 elapsed = time.perf_counter() - start
-                _send({"status": "ok", "elapsed_seconds": elapsed})
+            
+                # Generate the textual model representation after stopping the fit timer.
+                # The returned list contains one entry per learned rule followed by the
+                # default ELSE rule.
+                with contextlib.redirect_stdout(sys.stderr):
+                    rules = list(model.rules)
+            
+                _send({"status": "ok", "elapsed_seconds": elapsed, "rules": rules})
+            
                 continue
 
             if model is None:

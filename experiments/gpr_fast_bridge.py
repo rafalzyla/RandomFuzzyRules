@@ -83,12 +83,19 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
     n_features_in_ : int
         Number of fitted input features.
 
+    rules_ : list of str
+        Textual representation of the fitted GPR rule set returned by the
+        Python 3.10 worker. The list contains one ``IF ... THEN ...`` entry for
+        every learned positive-class rule, followed by the default ``ELSE`` rule.
+
     worker_fit_time_ : float
-        Time spent inside ``GPR_FAST.fit`` in the worker, excluding process
-        startup and file transfer.
+        Time spent inside ``GPR_FAST.fit`` in the worker. The measurement excludes
+        worker startup, file transfer, JSON communication, and generation of the
+        textual ``rules_`` representation.
 
     subprocess_fit_wall_time_ : float
-        Total wrapper fit time including worker startup and communication.
+        Total wrapper fit time, including worker startup, array transfer,
+        communication, and extraction of the textual rule representation.
 
     Notes
     -----
@@ -138,6 +145,10 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
             raise ValueError("GPRFastSubprocessClassifier supports binary classification only.")
 
         self.close()
+
+        if hasattr(self, "rules_"):
+            del self.rules_
+        
         wall_start = time.perf_counter()
         self._start_worker()
 
@@ -175,8 +186,21 @@ class GPRFastSubprocessClassifier(ClassifierMixin, BaseEstimator):
                 },
             }
         )
+
+        if "rules" not in response:
+            self.close()
+            raise RuntimeError(
+                "The GPR worker fit response did not contain "
+                "the fitted rule representation."
+            )
+            
         self.worker_fit_time_ = float(response["elapsed_seconds"])
         self.subprocess_fit_wall_time_ = time.perf_counter() - wall_start
+
+        # Store the textual rules returned by GPR_FAST. The list contains the
+        # learned IF-THEN rules followed by the default ELSE rule.
+        self.rules_ = list(response["rules"])
+        
         # Optional hook used by the benchmark runner to exclude bridge overhead.
         self._benchmark_fit_time_ = self.worker_fit_time_
         self._is_fitted = True

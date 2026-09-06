@@ -46,6 +46,11 @@ RESULT_COLUMNS = [
     "mcc",
     "fit_time",
     "predict_time",
+    "n_rules",
+    "n_conditions",
+    "mean_conditions_per_rule",
+    "n_literals",
+    "mean_literals_per_rule",
 ]
 
 
@@ -323,6 +328,104 @@ def get_positive_scores(estimator, X_test):
     )
 
 
+def get_rfr_rule_complexity(estimator):
+    """Calculate structural complexity from an RFR rule set."""
+    rules = estimator.rules_struct_
+
+    n_rules = len(rules)
+
+    n_conditions = sum(len(rule) for rule in rules)
+
+    n_literals = sum(
+        condition.modifier
+        if condition.state in {"high", "low"}
+        else 1
+        for rule in rules
+        for condition in rule
+    )
+
+    return {
+        "n_rules": n_rules,
+        "n_conditions": n_conditions,
+        "mean_conditions_per_rule": n_conditions / n_rules if n_rules > 0 else np.nan,
+        "n_literals": n_literals,
+        "mean_literals_per_rule": n_literals / n_rules if n_rules > 0 else np.nan,
+    }
+
+
+def get_gpr_rule_complexity(estimator):
+    """Calculate structural complexity from textual GPR rules."""
+    learned_rules = [
+        rule
+        for rule in estimator.rules_
+        if rule.strip().startswith("IF ")
+    ]
+
+    condition_counts = []
+    literal_counts = []
+
+    for rule in learned_rules:
+        try:
+            antecedent = rule.split("IF ", 1)[1].split(" THEN ", 1)[0]
+        except IndexError as error:
+            raise ValueError(f"Unexpected GPR rule format: {rule!r}") from error
+
+        conditions = [
+            condition.strip()
+            for condition in antecedent.split(" AND ")
+            if condition.strip()
+        ]
+
+        condition_counts.append(len(conditions))
+
+        n_rule_literals = 0
+
+        for condition in conditions:
+            normalized = condition.casefold()
+
+            if (
+                "very high" in normalized
+                or "very low" in normalized
+                or "medium" in normalized
+            ):
+                n_rule_literals += 2
+            else:
+                n_rule_literals += 1
+
+        literal_counts.append(
+            n_rule_literals
+        )
+
+    n_rules = len(learned_rules)
+    n_conditions = sum(condition_counts)
+    n_literals = sum(literal_counts)
+
+    return {
+        "n_rules": n_rules,
+        "n_conditions": n_conditions,
+        "mean_conditions_per_rule": n_conditions / n_rules if n_rules > 0 else np.nan,
+        "n_literals": n_literals,
+        "mean_literals_per_rule": n_literals / n_rules if n_rules > 0 else np.nan,
+    }
+
+
+def get_rule_complexity(estimator, estimator_name):
+    """Return comparable rule-complexity measures for RFR and GPR."""
+    if estimator_name == "RFR":
+        return get_rfr_rule_complexity(estimator)
+
+    if estimator_name == "GPR":
+        return get_gpr_rule_complexity(estimator)
+
+    return {
+        "n_rules": np.nan,
+        "n_conditions": np.nan,
+        "mean_conditions_per_rule": np.nan,
+        "n_literals": np.nan,
+        "mean_literals_per_rule": np.nan,
+    }
+    
+
 def run_benchmark(datasets, make_estimators, results_file, errors_file):
 
     results_file = Path(results_file)
@@ -476,6 +579,11 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
 
                         fit_time = getattr(estimator, "_benchmark_fit_time_", fit_wall_time)
 
+                        rule_complexity = get_rule_complexity(
+                            estimator=estimator,
+                            estimator_name=estimator_name,
+                        )
+
                         predict_start = time.perf_counter()
                         y_pred = estimator.predict(X_test)
                         predict_wall_time = time.perf_counter() - predict_start
@@ -501,6 +609,11 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
                             "mcc": matthews_corrcoef(y_test, y_pred),
                             "fit_time": fit_time,
                             "predict_time": predict_time,
+                            "n_rules": rule_complexity["n_rules"],
+                            "n_conditions": rule_complexity["n_conditions"],
+                            "mean_conditions_per_rule": rule_complexity["mean_conditions_per_rule"],
+                            "n_literals": rule_complexity["n_literals"],
+                            "mean_literals_per_rule": rule_complexity["mean_literals_per_rule"],
                         }
 
                         results = pd.concat(
@@ -513,10 +626,20 @@ def run_benchmark(datasets, make_estimators, results_file, errors_file):
                         # Save after every classifier/fold pair.
                         save_results(results, results_file)
 
+                        complexity_text = ""
+
+                        if estimator_name in {"RFR", "GPR"}:
+                            complexity_text = (
+                                f" | rules={rule_complexity['n_rules']}"
+                                f" | conditions={rule_complexity['n_conditions']}"
+                                f" | literals={rule_complexity['n_literals']}"
+                            )
+                        
                         print(
                             f" | acc={record['accuracy']:.3f}"
                             f" | fit={fit_time:.3f}s"
                             f" | pred={predict_time:.6f}s"
+                            f"{complexity_text}"
                         )
 
                     except Exception as error:
