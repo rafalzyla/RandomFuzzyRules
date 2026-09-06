@@ -259,7 +259,7 @@ def _batch_confusion(X, y, features, states, modifiers, lengths, n_rules, thresh
     observation, the raw fuzzy score is converted to a positive-class
     probability using
 
-    ``p = 1 - exp(2 * log(0.5) * score)``.
+    ``p = 1 - 4 ** (-score)``.
 
     The predicted class is positive when ``p >= threshold``.
 
@@ -284,8 +284,6 @@ def _batch_confusion(X, y, features, states, modifiers, lengths, n_rules, thresh
     true_negatives = np.zeros(n_candidates, dtype=np.int64)
     false_positives = np.zeros(n_candidates, dtype=np.int64)
     false_negatives = np.zeros(n_candidates, dtype=np.int64)
-    
-    log_quarter = 2.0 * np.log(0.5)
     
     for c in prange(n_candidates):
         tp = 0
@@ -313,7 +311,7 @@ def _batch_confusion(X, y, features, states, modifiers, lengths, n_rules, thresh
                         value = 1.0 - x
                     activation *= value
                 score += activation
-            p = 1.0 - np.exp(log_quarter * score)
+            p = 1.0 - (4.0 ** (-score))
             y_pred = p >= threshold
             
             if y_pred:
@@ -341,7 +339,7 @@ def _batch_confusion_threshold_half(X, y, features, states, modifiers, lengths, 
     This function is equivalent to ``_batch_confusion`` when the probability
     threshold equals 0.5. Under the probability transformation
     
-    ``p = 1 - exp(2 * log(0.5) * score)``,
+    ``p = 1 - 4 ** (-score)``,
     
     the condition ``p >= 0.5`` is equivalent to ``score >= 0.5``. The expensive
     probability transformation can therefore be omitted.
@@ -1659,7 +1657,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         The returned score is non-negative. It is converted to a positive-class
         probability by ``predict_proba`` using
         
-        ``p = 1 - exp(2 * log(0.5) * score)``.
+        ``p = 1 - 4 ** (-score)``.
         """
         check_is_fitted(self, ["rules_struct_", "_compiled_rule_arrays_"])
         self._check_X_no_return(X)
@@ -1711,12 +1709,12 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
         -----
         For a raw RuleSet score ``s``, the positive probability is calculated as
         
-        ``p_positive = 1 - exp(2 * log(0.5) * s)``.
+        ``p_positive = 1 - 4 ** (-score)``.
         
         The negative probability is ``1 - p_positive``.
         """
         score = self.decision_function(X)
-        p = 1.0 - np.exp(2.0 * np.log(0.5) * score)
+        p = 1.0 - (4.0 ** (-score))
         return np.column_stack((1.0 - p, p))
 
     def predict(self, X):
