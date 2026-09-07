@@ -414,48 +414,6 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
         index=False,
     )
 
-    complexity_summary = (
-        complexity_means
-        .groupby("estimator", as_index=True)[list(complexity_columns)]
-        .median()
-        .reindex(["RFR", "GPR"])
-        .rename(
-            index={
-                "RFR": "RFR",
-                "GPR": r"GPR (\texttt{gpr-fast})",
-            },
-            columns={
-                "n_rules": "Rules",
-                "n_conditions": "Conditions",
-                "mean_conditions_per_rule": "Conditions/rule",
-                "n_literals": "Literals",
-                "mean_literals_per_rule": "Literals/rule",
-            },
-        )
-        .reset_index(names="Classifier")
-    )
-
-    complexity_summary.to_csv(
-        OUTPUT_DIR / "rule_complexity_summary.csv",
-        index=False,
-    )
-
-    complexity_summary.to_latex(
-        OUTPUT_DIR / "rule_complexity_summary.tex",
-        index=False,
-        escape=False,
-        float_format="%.2f",
-        column_format="lccccc",
-        caption=(
-            "Median complexity of rule sets selected by RFR and GPR across "
-            "the held-out datasets. Complexity values were first averaged "
-            "across the predefined splits of each dataset. The default "
-            "\\texttt{ELSE} rule is excluded."
-        ),
-        label="tab:model-complexity",
-        position="!htbp",
-    )
-
     print(f"Comparison outputs saved to: {OUTPUT_DIR.resolve()}")
 
 
