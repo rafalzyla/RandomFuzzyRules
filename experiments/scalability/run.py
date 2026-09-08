@@ -499,7 +499,7 @@ def _save_plot(results: pd.DataFrame, study: str, OUTPUT_ROOT: Path) -> None:
         "candidates": "RFR training-time scalability with the number of candidates",
     }
 
-    sns.set_theme(style="whitegrid", font_scale=1.2)
+    sns.set_theme(style="whitegrid", font_scale=1.6)
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.lineplot(
         data=subset,
@@ -519,11 +519,12 @@ def _save_plot(results: pd.DataFrame, study: str, OUTPUT_ROOT: Path) -> None:
     ax.set_yscale("log", base=10)
     ticks = sorted(subset["value"].unique())
     ax.set_xticks(ticks)
-    ax.set_xticklabels([f"{int(value):,}" for value in ticks], rotation=35, ha="right")
+    ax.set_xticklabels([f"{int(value):,}" for value in ticks], rotation=35, ha="center")
     ax.yaxis.set_major_formatter(FuncFormatter(_format_seconds))
     ax.set_xlabel(x_labels[study])
     ax.set_ylabel("Median training time")
     ax.set_title(title_labels[study])
+    sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 0.75))
     fig.tight_layout()
     fig.savefig(OUTPUT_ROOT / f"{study}_fit_time.png", dpi=300, bbox_inches="tight")
     plt.close(fig)

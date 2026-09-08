@@ -900,6 +900,8 @@ def draw_significance(
             "diagram."
         )
 
+    plt.rcParams["font.size"] = 10
+
     fig, ax = plot_significance(
         scores=matrix.to_numpy(),
         labels=list(matrix.columns),
@@ -923,6 +925,7 @@ def draw_mean_fit_time(
     output_file,
     title,
     display_labels=None,
+    log_scale=False,
 ):
     """Create and save a boxplot of per-dataset mean training times."""
     matrix = metric_matrix(
@@ -932,17 +935,37 @@ def draw_mean_fit_time(
         display_labels=display_labels,
     )
 
+    values = matrix.to_numpy(dtype=np.float64)
+
+    plt.rcParams["font.size"] = 14
+
     fig, ax = plot_boxplot(
-        results=matrix.to_numpy(),
+        results=values,
         labels=list(matrix.columns),
         relative=False,
         plot_type="boxplot",
         outliers=True,
         title=title,
     )
-    ax.set_ylabel("Mean training time per dataset (seconds)")
     ax.set_xlabel("Configuration")
-    ax.set_yscale("linear")
+    ax.set_ylabel("Mean training time per dataset (seconds)")
+    if log_scale:
+        # Add symmetric padding in logarithmic space.
+        log_min = np.log10(values.min())
+        log_max = np.log10(values.max())
+        padding = max(
+            0.1 * (log_max - log_min),
+            0.15,
+        )
+
+        ax.set_yscale("log")
+        ax.set_ylim(
+            10.0 ** (log_min - padding),
+            10.0 ** (log_max + padding),
+        )
+        
+    else:
+        ax.set_yscale("linear")
 
     ax.set_axisbelow(True)
 

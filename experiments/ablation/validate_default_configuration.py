@@ -149,6 +149,7 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE):
         output_file=OUTPUT_DIR / "mean_fit_time.png",
         title="Distribution of mean training time — RFR defaults",
         display_labels=DISPLAY_LABELS,
+        log_scale=True,
     )
     print(f"Results and plots saved to: {OUTPUT_DIR.resolve()}")
 

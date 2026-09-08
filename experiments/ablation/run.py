@@ -33,11 +33,7 @@ def _safe_name(value: Any) -> str:
 
 
 def _sampling_label(number_type: int, length_type: int) -> str:
-    names = {1: "uniform", 2: "exponential"}
-    return (
-        f"number={names[number_type]}, "
-        f"length={names[length_type]}"
-    )
+    return f"num={number_type}, len={length_type}"
 
 
 def _value_label(study_name: str, value: Any) -> str:

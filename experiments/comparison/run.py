@@ -33,7 +33,7 @@ DISPLAY_LABELS = {
     "GPR": "GPR",
     "FIGS": "FIGS",
     "HSTree": "HSTree",
-    "GreedyRuleList": "GreedyRuleList",
+    "GreedyRuleList": "GRL",
     "Dummy": "Dummy",
 }
 
@@ -393,6 +393,7 @@ def generate_outputs(OUTPUT_DIR, RESULTS_FILE, DATASET_MEANS_FILE):
         output_file=OUTPUT_DIR / "mean_fit_time.png",
         title="Distribution of mean training time",
         display_labels=DISPLAY_LABELS,
+        log_scale=True,
     )
 
     complexity_columns = (
