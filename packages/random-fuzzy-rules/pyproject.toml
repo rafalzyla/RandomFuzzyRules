@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "random-fuzzy-rules"
-version = "0.1.0"
+version = "1.0.0"
 description = "Interpretable binary classification with randomly generated fuzzy rule sets"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

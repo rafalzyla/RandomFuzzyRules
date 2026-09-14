@@ -2,6 +2,10 @@
 
 Random Fuzzy Rules (RFR) is a scikit-learn-compatible classifier that learns compact fuzzy rule sets through randomized candidate generation and efficient Numba-based evaluation. This repository contains the software package and the experiments used to evaluate its ablation settings, selected default configuration, scalability, and predictive performance.
 
+## Article release
+
+Version `v1.0.0` is the software release associated with the accompanying SoftwareX article and contains the implementation, experimental workflows, reference results, and cross-platform reproduction scripts used in the study.
+
 ## Reproducing the experiments
 
 Two equivalent wrapper scripts are provided:
