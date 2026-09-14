@@ -575,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "random-fuzzy-rules"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "../../packages/random-fuzzy-rules" }
 dependencies = [
     { name = "numba" },
@@ -609,7 +609,7 @@ wheels = [
 
 [[package]]
 name = "rule-based-classification-main-environment"
-version = "0.1.0"
+version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aeon" },
