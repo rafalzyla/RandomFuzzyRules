@@ -239,6 +239,51 @@ function Invoke-SmokeTests {
     )
 }
 
+function Invoke-GprEquivalenceTest {
+    $script:CurrentStage = "gpr-equivalence-test"
+
+    $testFile = Join-Path `
+        $RepoRoot `
+        "packages\gpr-fast\src\gpr_fast\test_evaluation_equivalence.py"
+
+    if (
+        -not (
+            Test-Path `
+                -LiteralPath $testFile `
+                -PathType Leaf
+        )
+    ) {
+        throw (
+            "GPR evaluation equivalence test was not found: " +
+            $testFile
+        )
+    }
+
+    Write-Log "Running GPR evaluation equivalence checks."
+
+    try {
+        Invoke-LoggedCommand `
+            -Command $UvCommand `
+            -Arguments @(
+                "run",
+                "--project",
+                (Join-Path $RepoRoot "environments\gpr"),
+                "--locked",
+                "python",
+                $testFile
+            )
+    }
+    catch {
+        throw (
+            "GPR evaluation equivalence checks failed. " +
+            "Experiments will not be started. " +
+            "See the execution log for details."
+        )
+    }
+
+    Write-Log "GPR evaluation equivalence checks passed."
+}
+
 function Remove-SafeReplicationPath {
     param([Parameter(Mandatory = $true)][string]$Target)
     if (-not (Test-Path -LiteralPath $Target)) { return }
@@ -345,6 +390,7 @@ try {
     Sync-Environment "environments\gpr"
     Write-EnvironmentManifest
     Invoke-SmokeTests
+    Invoke-GprEquivalenceTest
     Clear-SelectedOutputs
 
     if ($Experiment -eq "all") {

@@ -279,6 +279,30 @@ smoke_test() {
         2>&1 | tee -a "$LOG_FILE"
 }
 
+run_gpr_equivalence_test() {
+    CURRENT_STAGE="gpr-equivalence-test"
+
+    local test_file
+    test_file="$REPO_ROOT/packages/gpr-fast/src/gpr_fast/test_evaluation_equivalence.py"
+
+    [[ -f "$test_file" ]] || \
+        fail "GPR evaluation equivalence test was not found: $test_file"
+
+    log "Running GPR evaluation equivalence checks."
+
+    if ! "$UV_BIN" run \
+        --project "$REPO_ROOT/environments/gpr" \
+        --locked \
+        python "$test_file" \
+        2>&1 |
+        tee -a "$LOG_FILE"
+    then
+        fail "GPR evaluation equivalence checks failed. Experiments will not be started."
+    fi
+
+    log "GPR evaluation equivalence checks passed."
+}
+
 safe_remove() {
     local target="$1" canonical_root canonical_target
     [[ -e "$target" ]] || return 0
@@ -358,6 +382,7 @@ main() {
     sync_environment environments/gpr
     write_environment_manifest
     smoke_test
+    run_gpr_equivalence_test
     clean_selected_outputs
 
     if [[ "$EXPERIMENT" == "all" ]]; then
