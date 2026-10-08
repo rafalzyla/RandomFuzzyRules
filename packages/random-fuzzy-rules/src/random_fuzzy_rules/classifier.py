@@ -770,7 +770,7 @@ def _canonicalize_candidate_fast(features, states, modifiers, lengths, n_rules, 
                 if (
                     current_group >= 0
                     and current_group == previous_group
-                    and (current_state == 3 or previous_state == 3)
+                    and (current_state == 2 or previous_state == 2)
                 ):
                     return False
 
