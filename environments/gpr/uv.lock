@@ -28,7 +28,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/0f/e9/58bba7b39d3e0cd06
 
 [[package]]
 name = "gpr-fast"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "../../packages/gpr-fast" }
 dependencies = [
     { name = "deap" },
@@ -96,7 +96,7 @@ wheels = [
 
 [[package]]
 name = "rule-based-classification-gpr-environment"
-version = "1.0.0"
+version = "1.0.1"
 source = { virtual = "." }
 dependencies = [
     { name = "deap" },
