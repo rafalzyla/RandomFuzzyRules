@@ -1543,7 +1543,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
             self.quantile_feature_indices_ = np.asarray(sorted(self.continuous_feature_indices_), dtype=np.int64)
         
             if self.quantile_transform is not None and self.quantile_feature_indices_.size > 0:
-                self.quantile_transformer_ = self._make_quantile_transformer(n_samples=Xt.shape[0])
+                self.quantile_transformer_ = self._make_quantile_transformer(n_samples=X.shape[0])
         
                 Xt = np.array(Xt, dtype=np.float64, order="C", copy=True)
         
@@ -1564,7 +1564,7 @@ class RandomFuzzyRulesClassifier(ClassifierMixin, BaseEstimator):
                 if self.quantile_transform is None:
                     numerical_transformer = MinMaxScaler(clip=True)
                 else:
-                    numerical_transformer = self._make_quantile_transformer(n_samples=Xt.shape[0])
+                    numerical_transformer = self._make_quantile_transformer(n_samples=X.shape[0])
             
                 transformers.append(("num", numerical_transformer, num_cols))
             if cat_cols:
