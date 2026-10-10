@@ -20,4 +20,6 @@ The modifications include:
   the optimized implementation from the original version;
 
 The modified implementation is used as the GPR reference classifier in the
-scalability and final comparison experiments.
+scalability and final comparison experiments. The first model fit may include 
+additional latency from Numba's run-time compilation, while subsequent fits 
+reuse the compiled kernels.

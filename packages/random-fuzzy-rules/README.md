@@ -7,6 +7,8 @@ invalid or duplicate candidates, and selecting the candidate with the best
 training objective.
 
 Candidate evaluation is accelerated with Numba-compiled computational kernels.
+The first call to fit() may take longer because Numba compiles the computational 
+kernels at run time; subsequent calls reuse the compiled code.
 The implementation is designed for current scientific Python environments and
 integrates with standard scikit-learn workflows.
 
